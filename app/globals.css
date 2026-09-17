@@ -1,0 +1,149 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Safe-area insets, resolved once and reused by every layout. */
+    --sat: env(safe-area-inset-top, 0px);
+    --sar: env(safe-area-inset-right, 0px);
+    --sab: env(safe-area-inset-bottom, 0px);
+    --sal: env(safe-area-inset-left, 0px);
+
+    /* Height of the fixed bottom navigation, excluding the inset. */
+    --nav-h: 64px;
+  }
+
+  html {
+    /* iOS rotates to landscape and inflates text without this. */
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+    /* iOS Safari mis-measures 100vh; dvh is correct, the -webkit rule is the fallback. */
+    height: -webkit-fill-available;
+  }
+
+  body {
+    min-height: 100dvh;
+    /* Fallback for older iOS that ignores dvh. */
+    min-height: -webkit-fill-available;
+    background-color: #ffffff;
+    color: #0f172a; /* slate-900 */
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+      "Helvetica Neue", Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    /* Stop the whole page rubber-banding on iOS; panels scroll, the shell does not. */
+    overscroll-behavior-y: none;
+  }
+
+  /* Kill the grey flash Android/iOS paint over tapped elements. */
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Controls should never be text-selectable or trigger the iOS callout menu. */
+  button,
+  [role="button"],
+  a,
+  label,
+  summary {
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+  }
+
+  /* Text the user may legitimately want to copy (incident ids, phone numbers). */
+  .selectable {
+    -webkit-user-select: text;
+    user-select: text;
+    -webkit-touch-callout: default;
+  }
+
+  /* iOS zooms the viewport when a focused input is under 16px. Never go smaller. */
+  input,
+  textarea,
+  select {
+    font-size: 16px;
+  }
+
+  /* Visible focus for keyboard users only — no hover states anywhere. */
+  :focus-visible {
+    outline: 3px solid #dc2626;
+    outline-offset: 2px;
+  }
+}
+
+@layer utilities {
+  /* Page padding that respects the notch and the gesture bar. */
+  .pt-safe {
+    padding-top: calc(var(--sat) + 0.5rem);
+  }
+  .pb-safe {
+    padding-bottom: calc(var(--sab) + 0.5rem);
+  }
+  .px-safe {
+    padding-left: max(var(--sal), 1rem);
+    padding-right: max(var(--sar), 1rem);
+  }
+
+  /* Clears the fixed bottom nav plus the gesture bar. */
+  .pb-nav {
+    padding-bottom: calc(var(--nav-h) + var(--sab) + 1rem);
+  }
+
+  /* Minimum comfortable touch target on both platforms. */
+  .tap {
+    min-height: 48px;
+    min-width: 48px;
+  }
+
+  /* Pressed-state feedback, since we have no hover. */
+  .press {
+    transition: transform 120ms ease, opacity 120ms ease;
+  }
+  .press:active {
+    transform: scale(0.97);
+    opacity: 0.9;
+  }
+}
+
+/* Visual pulse used instead of vibration on iOS, which has no Vibration API. */
+@keyframes aegis-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.55);
+  }
+  70% {
+    box-shadow: 0 0 0 28px rgba(220, 38, 38, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(220, 38, 38, 0);
+  }
+}
+
+.animate-aegis-pulse {
+  animation: aegis-pulse 900ms ease-out;
+}
+
+/* Critical incident attention flash on the dashboard. */
+@keyframes aegis-flash {
+  0%,
+  100% {
+    background-color: #ffffff;
+  }
+  50% {
+    background-color: #fee2e2;
+  }
+}
+
+.animate-aegis-flash {
+  animation: aegis-flash 1.1s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-aegis-pulse,
+  .animate-aegis-flash {
+    animation: none;
+  }
+  .press {
+    transition: none;
+  }
+}
