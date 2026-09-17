@@ -147,3 +147,43 @@
     transition: none;
   }
 }
+
+/* ---------------------------------------------------------------
+   Print: used for the QR sheets in /admin/qr
+   --------------------------------------------------------------- */
+@media print {
+  /* Chrome/Safari drop background colours unless asked. */
+  * {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* The app shell is phone-width; printing wants the full page. */
+  body > div {
+    max-width: none !important;
+  }
+
+  main {
+    padding-bottom: 0 !important;
+  }
+
+  /* Chrome interface elements have no place on paper. */
+  nav,
+  a[href^="tel:"] {
+    display: none !important;
+  }
+
+  .qr-sheet {
+    gap: 1.25rem;
+  }
+
+  /* Four codes across on A4, and never split a code from its caption. */
+  .qr-sheet .grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .qr-card {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+}
