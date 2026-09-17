@@ -211,7 +211,10 @@ export default function AnalyticsView() {
           {stats.byHour.map((count, hour) => (
             <div
               key={hour}
-              className="flex flex-1 flex-col items-center justify-end"
+              // h-full matters: a percentage height on the bar below resolves
+              // against this element, and without a definite height it
+              // collapses to zero and the chart renders blank.
+              className="flex h-full flex-1 flex-col items-center justify-end"
               title={`${hour}:00 — ${count} report${count === 1 ? "" : "s"}`}
             >
               <span

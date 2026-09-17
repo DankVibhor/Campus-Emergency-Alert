@@ -239,8 +239,10 @@ export default function CriticalWatch() {
         <button
           type="button"
           onClick={() => void requestNotifications()}
-          className="tap fixed left-1/2 z-[60] -translate-x-1/2 rounded-full bg-slate-900 px-4 py-2 text-xs font-bold text-white shadow-lg active:bg-slate-700"
-          style={{ top: "calc(var(--sat) + 8px)" }}
+          // Sits above the bottom stack, not over the page heading - pinning it
+          // to the top covered the title of whatever screen was open.
+          className="tap fixed left-1/2 z-[60] -translate-x-1/2 whitespace-nowrap rounded-full bg-slate-900 px-4 py-2 text-xs font-bold text-white shadow-lg active:bg-slate-700"
+          style={{ bottom: "calc(var(--nav-h) + var(--call-h) + var(--sab) + 12px)" }}
         >
           <span className="flex items-center gap-1.5">
             <BellRing size={14} aria-hidden="true" />

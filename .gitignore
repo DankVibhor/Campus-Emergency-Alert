@@ -42,5 +42,6 @@ public/workbox-*.js
 public/workbox-*.js.map
 public/fallback-*.js
 
-.vercel
-.env*
+# secrets - never commit any env file
+.env
+.env.*
