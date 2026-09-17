@@ -26,7 +26,7 @@ export default function HomePage() {
       >
         <Siren size={56} strokeWidth={2.4} aria-hidden="true" />
         <span className="text-2xl font-extrabold">Report Emergency</span>
-        <span className="text-sm font-medium text-red-100">
+        <span className="text-sm font-semibold text-white">
           Medical · Fire · Security · Accident
         </span>
       </Link>

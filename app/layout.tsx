@@ -30,9 +30,10 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
-  // Lets the page paint underneath the notch so our insets can do the work.
+  // Pinch-zoom stays enabled: blocking it fails WCAG 1.4.4 for low-vision
+  // users, and iOS has ignored user-scalable=no since iOS 10 regardless.
+  // Accidental zoom is prevented structurally instead - 48px touch targets
+  // and 16px input text, so iOS never auto-zooms a focused field.
   viewportFit: "cover",
   themeColor: "#ffffff",
 };

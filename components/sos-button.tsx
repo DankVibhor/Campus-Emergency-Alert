@@ -107,7 +107,7 @@ export default function SosButton({
     <div className="flex flex-col items-center gap-3">
       <button
         type="button"
-        aria-label="Hold for two seconds to send an emergency report"
+        aria-label="SOS — hold 2 seconds to send an emergency report"
         aria-disabled={isDisabled}
         disabled={isDisabled}
         onPointerDown={begin}
@@ -165,7 +165,7 @@ export default function SosButton({
           <span className="text-4xl font-extrabold leading-none tracking-tight">
             SOS
           </span>
-          <span className="mt-1.5 px-4 text-center text-[11px] font-semibold leading-tight text-red-100">
+          <span className="mt-1.5 px-4 text-center text-[11px] font-bold leading-tight text-white">
             {submitting
               ? "Sending…"
               : holding

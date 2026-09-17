@@ -13,7 +13,9 @@ export default function CallSecurity() {
   return (
     <a
       href={`tel:${phone}`}
-      aria-label="Call campus security now"
+      // The accessible name must contain the visible text, or voice control
+      // ("tap Call Security") cannot reach this button.
+      aria-label="Call Security now"
       className="press tap fixed right-4 z-50 flex items-center gap-2 rounded-2xl bg-red-600 px-5 py-3 text-white shadow-lg shadow-red-600/30"
       style={{ bottom: "calc(var(--nav-h) + var(--sab) + 12px)" }}
     >
