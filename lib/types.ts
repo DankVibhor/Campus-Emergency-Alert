@@ -49,6 +49,40 @@ export interface Incident {
   acknowledged_at: string | null;
   resolved_at: string | null;
   acknowledged_by: string | null;
+
+  // Added in migration 0002
+  photo_url: string | null;
+  /** Set when this report duplicates an earlier one; null means it is primary. */
+  duplicate_of: string | null;
+  responder_lat: number | null;
+  responder_lng: number | null;
+  responder_eta_seconds: number | null;
+  responder_name: string | null;
+  on_my_way_at: string | null;
+}
+
+export type SafeWalkStatus =
+  | "walking"
+  | "safe"
+  | "overdue"
+  | "escalated"
+  | "cancelled";
+
+export interface SafeWalk {
+  id: string;
+  campus_id: string | null;
+  person_name: string | null;
+  person_phone: string | null;
+  from_label: string | null;
+  to_label: string | null;
+  expected_minutes: number;
+  started_at: string;
+  due_at: string;
+  checked_in_at: string | null;
+  status: SafeWalkStatus;
+  last_lat: number | null;
+  last_lng: number | null;
+  incident_id: string | null;
 }
 
 export interface IncidentEvent {

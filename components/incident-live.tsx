@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { CheckCircle2, Clock, MapPin, Undo2 } from "lucide-react";
+import { CheckCircle2, Clock, MapPin, Navigation, Undo2 } from "lucide-react";
+import { formatEta } from "@/lib/geo";
 import { ReportedAgo } from "@/components/live-time";
 import { speak } from "@/lib/speech";
 import { readSettings } from "@/lib/a11y-settings";
@@ -314,6 +315,41 @@ export default function IncidentLive({ incidentId, justSent }: Props) {
             <p className="mt-2 text-sm text-red-700">{cancelError}</p>
           ) : null}
         </div>
+      ) : null}
+
+      {/* Responder en route */}
+      {incident.acknowledged_at && !cancelled && incident.status !== "resolved" ? (
+        <section className="rounded-2xl border-2 border-green-200 bg-green-50 px-5 py-4">
+          <p className="flex items-center gap-2 text-base font-extrabold text-green-900">
+            <Navigation size={18} aria-hidden="true" />
+            Help is on the way
+          </p>
+          {incident.responder_eta_seconds !== null ? (
+            <p className="mt-1 text-sm font-semibold text-green-800">
+              Estimated arrival in about{" "}
+              {formatEta(incident.responder_eta_seconds)}.
+            </p>
+          ) : (
+            <p className="mt-1 text-sm text-green-800">
+              A responder has accepted your report.
+            </p>
+          )}
+          <p className="mt-1 text-xs text-green-700">
+            Stay where you are if it is safe to do so.
+          </p>
+        </section>
+      ) : null}
+
+      {/* Photo evidence */}
+      {incident.photo_url ? (
+        <section className="overflow-hidden rounded-2xl border border-slate-200">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={incident.photo_url}
+            alt="Photo submitted with this report"
+            className="h-auto w-full"
+          />
+        </section>
       ) : null}
 
       {/* Where / what */}

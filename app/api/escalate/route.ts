@@ -33,7 +33,29 @@ function originFrom(req: Request) {
  * next tier. Idempotent: a tier is only ever notified once, enforced by the
  * escalations table, so repeated calls from several dashboards are harmless.
  */
+/**
+ * Cron entry point. Vercel Cron issues a GET with an Authorization header, so
+ * this simply delegates to the same sweep the dashboard triggers.
+ *
+ * When CRON_SECRET is set, the header must match — otherwise anyone could
+ * hammer the escalation endpoint and spam responders.
+ */
+export async function GET(req: Request) {
+  const secret = process.env.CRON_SECRET;
+  if (secret) {
+    const auth = req.headers.get("authorization");
+    if (auth !== `Bearer ${secret}`) {
+      return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+    }
+  }
+  return runSweep(req);
+}
+
 export async function POST(req: Request) {
+  return runSweep(req);
+}
+
+async function runSweep(req: Request) {
   const db = getAdminClient();
   const origin = originFrom(req);
 

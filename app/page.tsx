@@ -6,6 +6,7 @@ import {
   QrCode,
   Accessibility,
   ChevronRight,
+  Footprints,
 } from "lucide-react";
 
 export default function HomePage() {
@@ -56,6 +57,24 @@ export default function HomePage() {
           <span className="text-xs text-slate-500">Staff dashboard</span>
         </Link>
       </div>
+
+      <Link
+        href="/safe-walk"
+        className="tap flex items-center justify-between rounded-2xl border-2 border-slate-200 px-5 py-4 active:bg-slate-100"
+      >
+        <span className="flex items-center gap-3">
+          <Footprints size={24} className="text-red-600" aria-hidden="true" />
+          <span className="text-left">
+            <span className="block text-base font-bold text-slate-900">
+              Safe Walk
+            </span>
+            <span className="block text-xs text-slate-500">
+              Walking alone? Start a check-in timer
+            </span>
+          </span>
+        </span>
+        <ChevronRight size={18} className="text-slate-300" aria-hidden="true" />
+      </Link>
 
       <Link
         href="/accessibility"

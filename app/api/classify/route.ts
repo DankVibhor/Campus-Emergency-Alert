@@ -12,6 +12,9 @@ import { maxPriority, type Incident, type Priority } from "@/lib/types";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+/** Same type, same block, inside this window counts as the same emergency. */
+const DUPLICATE_WINDOW_MS = 10 * 60 * 1000;
+
 function originFrom(req: Request) {
   const env = process.env.NEXT_PUBLIC_SITE_URL;
   if (env) return env.replace(/\/$/, "");
@@ -115,6 +118,63 @@ export async function POST(req: Request) {
     actor: ai.result ? `ai:${ai.provider}` : "rule-engine",
     note: reasoning,
   });
+
+  // --- Duplicate grouping --------------------------------------------------
+  // One fire reported by five students must page responders once, not five
+  // times. A report of the same type in the same block within the window is
+  // attached to the original instead of raising its own alert.
+  const windowStart = new Date(
+    new Date(incident.created_at).getTime() - DUPLICATE_WINDOW_MS,
+  ).toISOString();
+
+  const { data: priorRows } = await db
+    .from("incidents")
+    .select("id,created_at,final_priority,duplicate_of")
+    .eq("campus_id", incident.campus_id)
+    .eq("emergency_type", incident.emergency_type)
+    .in("status", ["reported", "classified", "acknowledged"])
+    .gte("created_at", windowStart)
+    .lt("created_at", incident.created_at)
+    .order("created_at", { ascending: true })
+    .limit(5);
+
+  // Attach to the original of the group, never to another duplicate.
+  const primary = (priorRows ?? []).find(
+    (r) => !(r as { duplicate_of: string | null }).duplicate_of,
+  ) as { id: string } | undefined;
+
+  if (primary) {
+    await db
+      .from("incidents")
+      .update({ duplicate_of: primary.id })
+      .eq("id", incidentId);
+
+    await db.from("incident_events").insert({
+      incident_id: incidentId,
+      event_type: "duplicate",
+      actor: "system",
+      note: "Grouped with an existing report of the same emergency. Responders were already alerted.",
+    });
+
+    // Tell the original that corroboration arrived - useful signal, no siren.
+    await db.from("incident_events").insert({
+      incident_id: primary.id,
+      event_type: "corroborated",
+      actor: "system",
+      note: "Another person reported the same emergency.",
+    });
+
+    return NextResponse.json({
+      ok: true,
+      duplicateOf: primary.id,
+      finalPriority,
+      rulePriority: rule.priority,
+      aiPriority,
+      reasoning,
+      telegramDelivered: 0,
+      suppressed: "duplicate report grouped with the original",
+    });
+  }
 
   // --- Notify tier 1 -------------------------------------------------------
   const roles = ESCALATION_TIERS[1];

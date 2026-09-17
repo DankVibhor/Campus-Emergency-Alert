@@ -20,6 +20,7 @@ import { enqueue } from "@/lib/offline-queue";
 import { readCache, writeCache } from "@/lib/reference-cache";
 import SosButton from "@/components/sos-button";
 import VoiceInput from "@/components/voice-input";
+import PhotoInput from "@/components/photo-input";
 
 const ICONS = {
   "heart-pulse": HeartPulse,
@@ -55,6 +56,7 @@ export default function ReportForm() {
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [queuedOffline, setQueuedOffline] = useState(false);
+  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
 
   // Geolocation is best-effort: we never block a report waiting for a fix.
   const coordsRef = useRef<Coords | null>(null);
@@ -174,6 +176,7 @@ export default function ReportForm() {
       reporter_phone: anonymous ? null : phone.trim() || null,
       reporter_lat: coordsRef.current?.lat ?? null,
       reporter_lng: coordsRef.current?.lng ?? null,
+      photo_url: photoUrl,
       status: "reported" as const,
     };
 
@@ -228,6 +231,7 @@ export default function ReportForm() {
     locationId,
     emergencyType,
     description,
+    photoUrl,
     anonymous,
     name,
     phone,
@@ -372,6 +376,7 @@ export default function ReportForm() {
         </label>
 
         <VoiceInput onText={setDescription} existing={description} />
+        <PhotoInput onUploaded={setPhotoUrl} />
       </section>
 
       {/* Who */}

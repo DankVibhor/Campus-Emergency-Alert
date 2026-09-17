@@ -2,7 +2,16 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { BellRing, BellOff, Check, CircleCheckBig, MapPin } from "lucide-react";
+import {
+  BellRing,
+  BellOff,
+  Check,
+  CircleCheckBig,
+  MapPin,
+  Navigation,
+  Users,
+} from "lucide-react";
+import { formatEta } from "@/lib/geo";
 import { ElapsedSince, EscalationCountdown } from "@/components/live-time";
 import { supabase } from "@/lib/supabase-browser";
 import { useLiveSync } from "@/lib/use-live-sync";
@@ -33,6 +42,35 @@ const ESCALATE_AFTER: Record<Priority, number> = {
 const ACTIVE_STATUSES = ["reported", "classified", "acknowledged"];
 
 const ALARM_PREF_KEY = "aegis.alarm";
+
+/** Best-effort position with a hard deadline; never rejects. */
+function currentPosition(
+  timeoutMs: number,
+): Promise<{ lat: number; lng: number } | null> {
+  if (typeof navigator === "undefined" || !navigator.geolocation) {
+    return Promise.resolve(null);
+  }
+  return new Promise((resolve) => {
+    let settled = false;
+    const done = (value: { lat: number; lng: number } | null) => {
+      if (settled) return;
+      settled = true;
+      resolve(value);
+    };
+    const timer = window.setTimeout(() => done(null), timeoutMs);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        window.clearTimeout(timer);
+        done({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+      },
+      () => {
+        window.clearTimeout(timer);
+        done(null);
+      },
+      { enableHighAccuracy: true, timeout: timeoutMs, maximumAge: 30_000 },
+    );
+  });
+}
 
 function rememberAlarmPref(on: boolean) {
   try {
@@ -112,10 +150,16 @@ export default function DashboardLive() {
   useEffect(() => {
     let stopped = false;
 
+    // Vercel's Hobby plan caps cron at once per day, so the open dashboard
+    // drives both sweeps at demo cadence. The daily cron in vercel.json is the
+    // backstop; a Pro plan would move these to per-minute server-side.
     async function sweep() {
       if (stopped) return;
       try {
-        await fetch("/api/escalate", { method: "POST" });
+        await Promise.all([
+          fetch("/api/escalate", { method: "POST" }),
+          fetch("/api/safe-walk/sweep", { method: "POST" }),
+        ]);
       } catch {
         /* a failed sweep retries on the next interval */
       }
@@ -139,9 +183,22 @@ export default function DashboardLive() {
   );
 
   // ---- filtering + sorting ------------------------------------------------
+  // How many later reports were grouped into each primary incident.
+  const duplicateCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const i of incidents) {
+      if (!i.duplicate_of) continue;
+      counts.set(i.duplicate_of, (counts.get(i.duplicate_of) ?? 0) + 1);
+    }
+    return counts;
+  }, [incidents]);
+
   const visible = useMemo(() => {
     const filtered = incidents.filter((i) => {
       if (campusFilter !== "all" && i.campus_id !== campusFilter) return false;
+      // Duplicates are folded into their primary card rather than repeating
+      // the same emergency down the board. "All" still shows them.
+      if (statusFilter !== "all" && i.duplicate_of) return false;
       if (statusFilter === "active") return ACTIVE_STATUSES.includes(i.status);
       if (statusFilter === "all") return true;
       return i.status === statusFilter;
@@ -272,10 +329,21 @@ export default function DashboardLive() {
       setBusyId(incidentId);
       setActionError(null);
       try {
+        // Acknowledging sends the responder's position so the reporter gets a
+        // real ETA. Capped tightly - nobody waits on GPS during an emergency.
+        const coords =
+          action === "acknowledge" ? await currentPosition(2500) : null;
+
         const res = await fetch("/api/incident/action", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ incidentId, action, actor: "Dashboard" }),
+          body: JSON.stringify({
+            incidentId,
+            action,
+            actor: "Dashboard",
+            lat: coords?.lat,
+            lng: coords?.lng,
+          }),
         });
         const body = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(body.error || "Action failed.");
@@ -428,6 +496,7 @@ export default function DashboardLive() {
               incident={incident}
               campusName={campusName(incident.campus_id)}
               locationLabel={locationLabel(incident.location_id)}
+              duplicates={duplicateCounts.get(incident.id) ?? 0}
               busy={busyId === incident.id}
               onAction={act}
             />
@@ -442,12 +511,14 @@ function IncidentCard({
   incident,
   campusName,
   locationLabel,
+  duplicates,
   busy,
   onAction,
 }: {
   incident: Incident;
   campusName: string;
   locationLabel: string;
+  duplicates: number;
   busy: boolean;
   onAction: (id: string, action: "acknowledge" | "resolve") => void;
 }) {
@@ -488,9 +559,33 @@ function IncidentCard({
         {locationLabel ? ` · ${locationLabel}` : ""}
       </p>
 
+      {duplicates > 0 ? (
+        <p className="mt-1.5 inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-700">
+          <Users size={13} aria-hidden="true" />
+          Confirmed by {duplicates + 1} {duplicates + 1 === 2 ? "person" : "people"}
+        </p>
+      ) : null}
+
       {incident.description ? (
         <p className="mt-1.5 text-sm leading-relaxed text-slate-600">
           {incident.description}
+        </p>
+      ) : null}
+
+      {incident.photo_url ? (
+        /* eslint-disable-next-line @next/next/no-img-element */
+        <img
+          src={incident.photo_url}
+          alt="Photo submitted with this report"
+          className="mt-2 h-32 w-full rounded-xl object-cover"
+          loading="lazy"
+        />
+      ) : null}
+
+      {incident.acknowledged_at && incident.responder_eta_seconds !== null ? (
+        <p className="mt-1.5 flex items-center gap-1.5 text-xs font-bold text-green-700">
+          <Navigation size={13} aria-hidden="true" />
+          Responder en route · ETA {formatEta(incident.responder_eta_seconds)}
         </p>
       ) : null}
 

@@ -1,6 +1,12 @@
 import { NextResponse } from "next/server";
 import { getAdminClient } from "@/lib/supabase-admin";
 import { isStaff } from "@/lib/staff-auth";
+import {
+  etaSeconds,
+  formatDistance,
+  formatEta,
+  haversineMetres,
+} from "@/lib/geo";
 import type { Incident } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -16,12 +22,16 @@ export async function POST(req: Request) {
   let incidentId = "";
   let action: Action = "acknowledge";
   let actor = "responder";
+  let responderLat: number | null = null;
+  let responderLng: number | null = null;
 
   try {
     const body = (await req.json()) as {
       incidentId?: string;
       action?: Action;
       actor?: string;
+      lat?: number;
+      lng?: number;
     };
     if (!body.incidentId) {
       return NextResponse.json({ error: "incidentId required" }, { status: 400 });
@@ -32,6 +42,8 @@ export async function POST(req: Request) {
     incidentId = body.incidentId;
     action = body.action;
     actor = (body.actor || "responder").slice(0, 80);
+    responderLat = Number.isFinite(body.lat) ? (body.lat as number) : null;
+    responderLng = Number.isFinite(body.lng) ? (body.lng as number) : null;
   } catch {
     return NextResponse.json({ error: "invalid JSON body" }, { status: 400 });
   }
@@ -63,9 +75,40 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: true, alreadyAcknowledged: true });
     }
 
+    // Work out how far away the responder is, so the reporter sees a real ETA
+    // instead of an unbounded "on the way".
+    let eta: number | null = null;
+    let distance: number | null = null;
+
+    if (responderLat !== null && responderLng !== null && incident.location_id) {
+      const { data: loc } = await db
+        .from("locations")
+        .select("lat,lng")
+        .eq("id", incident.location_id)
+        .maybeSingle();
+      const target = loc as { lat: number | null; lng: number | null } | null;
+
+      // Prefer the reporter's own fix; fall back to the location's coordinates.
+      const destLat = incident.reporter_lat ?? target?.lat ?? null;
+      const destLng = incident.reporter_lng ?? target?.lng ?? null;
+
+      if (destLat !== null && destLng !== null) {
+        distance = haversineMetres(responderLat, responderLng, destLat, destLng);
+        eta = etaSeconds(distance);
+      }
+    }
+
     const { error: updateError } = await db
       .from("incidents")
-      .update({ status: "acknowledged", acknowledged_at: now })
+      .update({
+        status: "acknowledged",
+        acknowledged_at: now,
+        on_my_way_at: now,
+        responder_name: actor,
+        responder_lat: responderLat,
+        responder_lng: responderLng,
+        responder_eta_seconds: eta,
+      })
       .eq("id", incidentId);
 
     if (updateError) {
@@ -82,10 +125,18 @@ export async function POST(req: Request) {
       incident_id: incidentId,
       event_type: "acknowledged",
       actor,
-      note: "Responder acknowledged and is on the way.",
+      note:
+        eta !== null && distance !== null
+          ? `Responder is on the way — about ${formatDistance(distance)} away, roughly ${formatEta(eta)}.`
+          : "Responder acknowledged and is on the way.",
     });
 
-    return NextResponse.json({ ok: true, status: "acknowledged" });
+    return NextResponse.json({
+      ok: true,
+      status: "acknowledged",
+      etaSeconds: eta,
+      distanceMetres: distance,
+    });
   }
 
   // resolve
