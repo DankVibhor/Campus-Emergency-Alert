@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { BellRing, BellOff, Check, CircleCheckBig, MapPin } from "lucide-react";
 import { ElapsedSince, EscalationCountdown } from "@/components/live-time";
@@ -167,17 +167,47 @@ export default function DashboardLive() {
     [incidents],
   );
 
+  // ---- overdue detection --------------------------------------------------
+  // Anything unacknowledged past its escalation deadline is "overdue" and
+  // must make noise, whatever its priority: nobody has responded in time.
+  const activeUnacked = useMemo(
+    () =>
+      incidents.filter(
+        (i) => !i.acknowledged_at && ACTIVE_STATUSES.includes(i.status),
+      ),
+    [incidents],
+  );
+
+  const [overdueCount, setOverdueCount] = useState(0);
+
+  useEffect(() => {
+    function check() {
+      const n = activeUnacked.filter((i) => {
+        const priority = (i.final_priority ?? "normal") as Priority;
+        const age = (Date.now() - new Date(i.created_at).getTime()) / 1000;
+        return age >= ESCALATE_AFTER[priority];
+      }).length;
+      // React bails out when the value is unchanged, so this only re-renders
+      // at the moment an incident actually crosses its deadline.
+      setOverdueCount((prev) => (prev === n ? prev : n));
+    }
+
+    check();
+    const id = window.setInterval(check, 3000);
+    return () => window.clearInterval(id);
+  }, [activeUnacked]);
+
   // ---- alarm --------------------------------------------------------------
-  const prevCount = useRef(0);
+  const needsAlarm = criticalUnacked.length > 0 || overdueCount > 0;
+
   useEffect(() => {
     if (!soundOn) {
       alarm.stop();
       return;
     }
-    if (criticalUnacked.length > 0) alarm.start();
+    if (needsAlarm) alarm.start();
     else alarm.stop();
-    prevCount.current = criticalUnacked.length;
-  }, [soundOn, criticalUnacked.length]);
+  }, [soundOn, needsAlarm]);
 
   useEffect(() => () => alarm.stop(), []);
 
@@ -198,8 +228,8 @@ export default function DashboardLive() {
     setSoundError(
       ok ? null : "This browser blocked audio. Check the silent switch or site sound settings.",
     );
-    if (ok && criticalUnacked.length > 0) alarm.start();
-  }, [soundOn, criticalUnacked.length]);
+    if (ok && needsAlarm) alarm.start();
+  }, [soundOn, needsAlarm]);
 
   // Audio is suspended on screen lock; resume it when the tab returns.
   useEffect(() => alarm.watchVisibility(), []);
@@ -307,6 +337,21 @@ export default function DashboardLive() {
           </span>
         ) : null}
       </button>
+
+      {overdueCount > 0 ? (
+        <div
+          role="alert"
+          className="animate-aegis-flash rounded-2xl border-2 border-red-600 px-4 py-3"
+        >
+          <p className="text-sm font-extrabold text-red-700">
+            {overdueCount} report{overdueCount === 1 ? "" : "s"} past the
+            response deadline
+          </p>
+          <p className="mt-0.5 text-sm text-red-700">
+            No responder has acknowledged yet. The next tier has been paged.
+          </p>
+        </div>
+      ) : null}
 
       {soundError ? (
         <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
@@ -469,38 +514,43 @@ function IncidentCard({
         </p>
       ) : null}
 
-      <div className="mt-3 flex gap-2">
+      {/* Acknowledge takes its own row: three buttons across a phone clipped
+          the label, and it is the action that stops the escalation clock. */}
+      <div className="mt-3 flex flex-col gap-2">
         {active && !incident.acknowledged_at ? (
           <button
             type="button"
             disabled={busy}
             onClick={() => onAction(incident.id, "acknowledge")}
-            className="press tap flex-1 rounded-2xl bg-red-600 px-4 py-3 text-sm font-bold text-white disabled:opacity-50"
+            className="tap w-full rounded-2xl bg-red-600 px-4 py-3.5 text-base font-bold text-white active:bg-red-700 disabled:opacity-50"
           >
-            {busy ? "…" : "Acknowledge"}
+            {busy ? "Working…" : "Acknowledge"}
           </button>
         ) : null}
-        {active ? (
-          <button
-            type="button"
-            disabled={busy}
-            onClick={() => onAction(incident.id, "resolve")}
-            className="press tap flex-1 rounded-2xl bg-green-600 px-4 py-3 text-sm font-bold text-white disabled:opacity-50"
+
+        <div className="flex gap-2">
+          {active ? (
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => onAction(incident.id, "resolve")}
+              className="tap min-w-0 flex-1 rounded-2xl bg-green-600 px-3 py-3 text-sm font-bold text-white active:bg-green-700 disabled:opacity-50"
+            >
+              {busy ? "…" : "Resolve"}
+            </button>
+          ) : (
+            <span className="flex min-w-0 flex-1 items-center gap-1.5 text-sm font-semibold text-slate-400">
+              <Check size={15} className="shrink-0" aria-hidden="true" />
+              <span className="truncate">{STATUS_LABELS[incident.status]}</span>
+            </span>
+          )}
+          <Link
+            href={`/incident/${incident.id}`}
+            className="tap flex shrink-0 items-center justify-center rounded-2xl border-2 border-slate-200 px-4 py-3 text-sm font-bold text-slate-700 active:bg-slate-100"
           >
-            {busy ? "…" : "Resolve"}
-          </button>
-        ) : (
-          <span className="flex items-center gap-1.5 text-sm font-semibold text-slate-400">
-            <Check size={15} aria-hidden="true" />
-            {STATUS_LABELS[incident.status]}
-          </span>
-        )}
-        <Link
-          href={`/incident/${incident.id}`}
-          className="press tap flex items-center justify-center rounded-2xl border-2 border-slate-200 px-4 py-3 text-sm font-bold text-slate-700"
-        >
-          Timeline
-        </Link>
+            Timeline
+          </Link>
+        </div>
       </div>
     </li>
   );
