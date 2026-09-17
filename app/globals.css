@@ -10,8 +10,9 @@
     --sab: env(safe-area-inset-bottom, 0px);
     --sal: env(safe-area-inset-left, 0px);
 
-    /* Height of the fixed bottom navigation, excluding the inset. */
+    /* Heights of the fixed bottom stack, excluding the safe-area inset. */
     --nav-h: 64px;
+    --call-h: 56px;
   }
 
   html {
@@ -85,9 +86,9 @@
     padding-right: max(var(--sar), 1rem);
   }
 
-  /* Clears the fixed bottom nav plus the gesture bar. */
+  /* Clears the whole fixed bottom stack (call bar + nav) and the gesture bar. */
   .pb-nav {
-    padding-bottom: calc(var(--nav-h) + var(--sab) + 1rem);
+    padding-bottom: calc(var(--nav-h) + var(--call-h) + var(--sab) + 1rem);
   }
 
   /* Minimum comfortable touch target on both platforms. */
@@ -146,6 +147,48 @@
   .press {
     transition: none;
   }
+}
+
+/* ---------------------------------------------------------------
+   Accessibility preferences (set on <html> by A11yBoot)
+   --------------------------------------------------------------- */
+
+/* Scales the whole interface via rem, so spacing grows with the text
+   instead of the text overflowing fixed-size boxes. */
+.a11y-large-text {
+  font-size: 125%;
+}
+
+.a11y-large-text body {
+  font-size: 1rem;
+}
+
+/* Inputs must stay at least 16px or iOS zooms the viewport on focus. */
+.a11y-large-text input,
+.a11y-large-text textarea,
+.a11y-large-text select {
+  font-size: max(16px, 1rem);
+}
+
+.a11y-high-contrast {
+  --tw-border-opacity: 1;
+}
+
+/* Lift washed-out secondary text to full-contrast slate. */
+.a11y-high-contrast .text-slate-400,
+.a11y-high-contrast .text-slate-500,
+.a11y-high-contrast .text-slate-600 {
+  color: #0f172a !important;
+}
+
+/* Make every hairline border visible. */
+.a11y-high-contrast .border-slate-200,
+.a11y-high-contrast .border-slate-300 {
+  border-color: #0f172a !important;
+}
+
+.a11y-high-contrast :focus-visible {
+  outline-width: 4px;
 }
 
 /* ---------------------------------------------------------------

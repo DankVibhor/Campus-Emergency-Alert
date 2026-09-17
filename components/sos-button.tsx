@@ -7,6 +7,7 @@ import {
   feedbackTick,
   primeAudio,
 } from "@/lib/feedback";
+import { primeSpeech } from "@/lib/speech";
 
 const HOLD_MS = 2000;
 const SIZE = 224; // >= the 200px minimum, including the ring
@@ -78,8 +79,10 @@ export default function SosButton({
       if (disabled || submitting) return;
       // Keep receiving events if the finger drifts off the button.
       e.currentTarget.setPointerCapture?.(e.pointerId);
-      // Must happen inside the gesture or iOS blocks the confirmation beep.
+      // Both must happen inside the gesture, or iOS blocks the confirmation
+      // beep and any spoken status update on the next screen.
       primeAudio();
+      primeSpeech();
 
       firedRef.current = false;
       lastTickRef.current = 0;

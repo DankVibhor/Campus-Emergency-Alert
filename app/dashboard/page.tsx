@@ -1,3 +1,5 @@
+import Link from "next/link";
+import { ChevronRight, QrCode } from "lucide-react";
 import { isStaff } from "@/lib/staff-auth";
 import StaffGate from "@/components/staff-gate";
 import DashboardLive from "@/components/dashboard-live";
@@ -28,7 +30,30 @@ export default function DashboardPage() {
         {staff ? <SignOutButton /> : null}
       </header>
 
-      {staff ? <DashboardLive /> : <StaffGate />}
+      {staff ? (
+        <>
+          <Link
+            href="/admin/qr"
+            className="tap flex items-center justify-between rounded-2xl border-2 border-slate-200 px-4 py-3 active:bg-slate-100"
+          >
+            <span className="flex items-center gap-2">
+              <QrCode size={20} className="text-red-600" aria-hidden="true" />
+              <span className="text-left">
+                <span className="block text-sm font-bold text-slate-900">
+                  Generate QR codes
+                </span>
+                <span className="block text-xs text-slate-500">
+                  Print and post one in each block
+                </span>
+              </span>
+            </span>
+            <ChevronRight size={18} className="text-slate-300" aria-hidden="true" />
+          </Link>
+          <DashboardLive />
+        </>
+      ) : (
+        <StaffGate />
+      )}
     </div>
   );
 }

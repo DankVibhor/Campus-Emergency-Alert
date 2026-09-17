@@ -1,79 +1,64 @@
+import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
 import { getAdminClient } from "@/lib/supabase-admin";
+import { isStaff } from "@/lib/staff-auth";
 import type { Campus, CampusLocation } from "@/lib/types";
-import PrintButton from "@/components/print-button";
+import QrSheet from "@/components/qr-sheet";
+import StaffGate from "@/components/staff-gate";
 
 export const dynamic = "force-dynamic";
 
 export const metadata = {
-  title: "Printable QR Codes — ASMT Aegis",
+  title: "QR Code Generator — ASMT Aegis",
 };
 
 export default async function AdminQrPage() {
-  const db = getAdminClient();
+  if (!isStaff()) {
+    return (
+      <div className="px-safe pt-safe flex flex-col gap-5">
+        <header className="pt-2">
+          <h1 className="text-2xl font-extrabold leading-tight text-slate-900">
+            QR Code Generator
+          </h1>
+          <p className="mt-1 text-sm leading-relaxed text-slate-600">
+            Sign in as staff to generate and print location QR codes.
+          </p>
+        </header>
+        <StaffGate />
+      </div>
+    );
+  }
 
+  const db = getAdminClient();
   const [{ data: campusRows }, { data: locationRows }] = await Promise.all([
     db.from("campuses").select("*").order("name"),
     db.from("locations").select("*").order("label"),
   ]);
 
-  const campuses = (campusRows ?? []) as Campus[];
-  const locations = (locationRows ?? []) as CampusLocation[];
-
   return (
-    <div className="px-safe pt-safe flex flex-col gap-6">
+    <div className="px-safe pt-safe flex flex-col gap-5">
       <header className="pt-2 print:hidden">
+        <Link
+          href="/dashboard"
+          className="tap mb-1 inline-flex items-center gap-1 text-sm font-bold text-slate-500 active:text-slate-900"
+        >
+          <ArrowLeft size={15} aria-hidden="true" />
+          Dashboard
+        </Link>
         <h1 className="text-2xl font-extrabold leading-tight text-slate-900">
-          Printable QR Codes
+          QR Code Generator
         </h1>
         <p className="mt-1 text-sm leading-relaxed text-slate-600">
-          One code per location. Print, cut, and post them in each block. Each
-          code opens the report form with that location pre-selected.
+          One code per location. Print them, cut along the cards, and post one
+          in each block. Scanning opens the report form with that block and
+          floor already selected.
         </p>
-        <PrintButton />
       </header>
 
-      <div className="qr-sheet flex flex-col gap-8">
-        {campuses.map((campus) => {
-          const blockLocations = locations.filter(
-            (l) => l.campus_id === campus.id,
-          );
-          return (
-            <section key={campus.id} className="flex flex-col gap-3">
-              <h2 className="text-base font-extrabold text-slate-900">
-                {campus.name}
-              </h2>
-              <div className="grid grid-cols-2 gap-4">
-                {blockLocations.map((location) => (
-                  <figure
-                    key={location.id}
-                    className="qr-card flex flex-col items-center gap-2 rounded-2xl border-2 border-slate-300 px-3 py-4"
-                  >
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={`/api/qr?campus=${campus.id}&location=${location.id}&size=420`}
-                      alt={`QR code for ${campus.name}, ${location.label}`}
-                      width={160}
-                      height={160}
-                      className="h-auto w-full max-w-[160px]"
-                    />
-                    <figcaption className="text-center">
-                      <span className="block text-sm font-extrabold text-slate-900">
-                        {location.label}
-                      </span>
-                      <span className="block text-xs font-semibold text-slate-600">
-                        {campus.name}
-                      </span>
-                      <span className="mt-1 block text-[10px] font-bold uppercase tracking-wide text-red-600">
-                        Scan to report an emergency
-                      </span>
-                    </figcaption>
-                  </figure>
-                ))}
-              </div>
-            </section>
-          );
-        })}
-      </div>
+      <QrSheet
+        campuses={(campusRows ?? []) as Campus[]}
+        locations={(locationRows ?? []) as CampusLocation[]}
+      />
     </div>
   );
 }

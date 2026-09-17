@@ -2,6 +2,8 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import BottomNav from "@/components/bottom-nav";
 import CallSecurity from "@/components/call-security";
+import StaffAlerts from "@/components/staff-alerts";
+import A11yBoot from "@/components/a11y-boot";
 
 export const metadata: Metadata = {
   title: "ASMT Aegis — Campus Emergency Response",
@@ -46,11 +48,24 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="bg-white text-slate-900 antialiased">
+        <A11yBoot />
+        <StaffAlerts />
+
         <div className="mx-auto flex min-h-[100dvh] w-full max-w-md flex-col bg-white">
           <main className="flex-1 pb-nav">{children}</main>
         </div>
-        <CallSecurity />
-        <BottomNav />
+
+        {/* One fixed stack: the call bar sits directly above the nav, so
+            neither can ever overlap page content or each other. */}
+        <div
+          className="fixed inset-x-0 bottom-0 z-40 bg-white"
+          style={{ paddingBottom: "var(--sab)" }}
+        >
+          <div className="mx-auto w-full max-w-md">
+            <CallSecurity />
+            <BottomNav />
+          </div>
+        </div>
       </body>
     </html>
   );

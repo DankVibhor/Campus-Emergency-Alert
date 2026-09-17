@@ -20,12 +20,13 @@ export default function BottomNav() {
   const pathname = usePathname() || "/";
 
   return (
+    // Positioning is owned by the fixed bottom stack in the root layout.
     <nav
       aria-label="Primary"
-      className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white"
-      style={{ paddingBottom: "var(--sab)" }}
+      className="border-t border-slate-200 bg-white"
+      style={{ height: "var(--nav-h)" }}
     >
-      <ul className="mx-auto flex w-full max-w-md items-stretch justify-around">
+      <ul className="flex h-full items-stretch justify-around">
         {TABS.map(({ href, label, Icon }) => {
           const active = isActive(pathname, href);
           const report = href === "/report";
@@ -34,7 +35,7 @@ export default function BottomNav() {
               <Link
                 href={href}
                 aria-current={active ? "page" : undefined}
-                className="press tap flex h-16 flex-col items-center justify-center gap-1"
+                className="tap flex h-full flex-col items-center justify-center gap-1 active:bg-slate-100"
               >
                 <Icon
                   size={24}

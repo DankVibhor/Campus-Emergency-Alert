@@ -1,9 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { ChevronRight, Inbox } from "lucide-react";
 import { supabase } from "@/lib/supabase-browser";
+import { useLiveSync } from "@/lib/use-live-sync";
 import { listReports, type MyReport } from "@/lib/my-reports";
 import {
   PRIORITY_STYLES,
@@ -37,28 +38,28 @@ export default function MyReportsList() {
     void refresh(mine.map((r) => r.id));
   }, [refresh]);
 
-  // Keep statuses fresh while the tab is open.
-  useEffect(() => {
-    if (!saved || saved.length === 0) return;
-    const ids = saved.map((r) => r.id);
+  // Keep statuses fresh while the tab is open, without needing a reload.
+  const savedIds = useMemo(() => (saved ?? []).map((r) => r.id), [saved]);
+  const savedIdsRef = useRef<string[]>([]);
+  savedIdsRef.current = savedIds;
 
-    const channel = supabase
-      .channel("my-reports")
-      .on(
+  useLiveSync(
+    "my-reports",
+    (channel) =>
+      channel.on(
         "postgres_changes",
         { event: "UPDATE", schema: "public", table: "incidents" },
         (payload) => {
           const row = payload.new as Incident;
-          if (!ids.includes(row.id)) return;
+          if (!savedIdsRef.current.includes(row.id)) return;
           setIncidents((prev) => ({ ...prev, [row.id]: row }));
         },
-      )
-      .subscribe();
-
-    return () => {
-      void supabase.removeChannel(channel);
-    };
-  }, [saved]);
+      ),
+    () => {
+      if (savedIdsRef.current.length > 0) void refresh(savedIdsRef.current);
+    },
+    { pollMs: 10_000 },
+  );
 
   if (loading || saved === null) return <ListSkeleton />;
 
@@ -112,7 +113,7 @@ export default function MyReportsList() {
               </span>
               {style ? (
                 <span
-                  className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-extrabold ${style.badge}`}
+                  className={`inline-flex shrink-0 whitespace-nowrap items-center rounded-full px-2 py-0.5 text-[10px] font-extrabold leading-none ${style.badge}`}
                 >
                   {style.label}
                 </span>

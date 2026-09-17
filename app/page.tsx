@@ -1,5 +1,12 @@
 import Link from "next/link";
-import { Siren, Activity, ShieldCheck, QrCode } from "lucide-react";
+import {
+  Siren,
+  Activity,
+  ShieldCheck,
+  QrCode,
+  Accessibility,
+  ChevronRight,
+} from "lucide-react";
 
 export default function HomePage() {
   return (
@@ -49,6 +56,24 @@ export default function HomePage() {
           <span className="text-xs text-slate-500">Staff dashboard</span>
         </Link>
       </div>
+
+      <Link
+        href="/accessibility"
+        className="tap flex items-center justify-between rounded-2xl border-2 border-slate-200 px-5 py-4 active:bg-slate-100"
+      >
+        <span className="flex items-center gap-3">
+          <Accessibility size={24} className="text-red-600" aria-hidden="true" />
+          <span className="text-left">
+            <span className="block text-base font-bold text-slate-900">
+              Accessibility
+            </span>
+            <span className="block text-xs text-slate-500">
+              Voice announcements, larger text, high contrast
+            </span>
+          </span>
+        </span>
+        <ChevronRight size={18} className="text-slate-300" aria-hidden="true" />
+      </Link>
 
       <section className="rounded-2xl bg-slate-50 px-5 py-4">
         <h2 className="text-sm font-bold text-slate-900">How it works</h2>

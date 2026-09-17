@@ -3,9 +3,14 @@
 import { Phone } from "lucide-react";
 
 /**
- * Always-available voice fallback. A `tel:` link is handled by the dialer, so
- * this still works when the data connection is down but cellular voice is up —
- * the one path that must never depend on our backend.
+ * Always-available voice fallback, rendered as a full-width bar inside the
+ * fixed bottom stack. It was previously a floating button, which overlapped
+ * page content on small screens; sharing the stack with the nav makes overlap
+ * structurally impossible.
+ *
+ * A bare `tel:` link is the fastest path to the dialer. The OS still shows its
+ * own confirmation ("Call +91…?") and no web page can suppress that, so there
+ * is deliberately no extra in-app step before it.
  */
 export default function CallSecurity() {
   const phone = process.env.NEXT_PUBLIC_SECURITY_PHONE || "+919999999999";
@@ -13,14 +18,22 @@ export default function CallSecurity() {
   return (
     <a
       href={`tel:${phone}`}
-      // The accessible name must contain the visible text, or voice control
-      // ("tap Call Security") cannot reach this button.
       aria-label="Call Security now"
-      className="press tap fixed right-4 z-50 flex items-center gap-2 rounded-2xl bg-red-600 px-5 py-3 text-white shadow-lg shadow-red-600/30"
-      style={{ bottom: "calc(var(--nav-h) + var(--sab) + 12px)" }}
+      onPointerDown={() => {
+        // Android only; iOS has no Vibration API.
+        try {
+          navigator.vibrate?.(30);
+        } catch {
+          /* ignore */
+        }
+      }}
+      className="flex items-center justify-center gap-2 bg-red-600 text-white active:bg-red-700"
+      style={{ height: "var(--call-h)" }}
     >
-      <Phone size={20} strokeWidth={2.6} aria-hidden="true" />
-      <span className="text-sm font-bold">Call Security</span>
+      <Phone size={20} strokeWidth={2.8} aria-hidden="true" />
+      <span className="text-base font-extrabold tracking-tight">
+        Call Security
+      </span>
     </a>
   );
 }

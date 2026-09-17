@@ -17,7 +17,9 @@ import { EMERGENCY_TYPES, type Campus, type CampusLocation } from "@/lib/types";
 import { feedbackError } from "@/lib/feedback";
 import { rememberReport } from "@/lib/my-reports";
 import { enqueue } from "@/lib/offline-queue";
+import { readCache, writeCache } from "@/lib/reference-cache";
 import SosButton from "@/components/sos-button";
+import VoiceInput from "@/components/voice-input";
 
 const ICONS = {
   "heart-pulse": HeartPulse,
@@ -64,6 +66,28 @@ export default function ReportForm() {
   useEffect(() => {
     let cancelled = false;
 
+    function applyData(cs: Campus[], ls: CampusLocation[]) {
+      setCampuses(cs);
+      setLocations(ls);
+
+      // Prefill from the QR code when the ids are real, else fall back.
+      setCampusId((current) => {
+        if (current) return current;
+        return (
+          cs.find((c) => c.id === qrCampus)?.id ??
+          cs.find((c) => c.code === qrCampus?.toUpperCase())?.id ??
+          cs[0]?.id ??
+          ""
+        );
+      });
+      setLoading(false);
+    }
+
+    // 1. Paint immediately from the last known list.
+    const cached = readCache();
+    if (cached) applyData(cached.campuses, cached.locations);
+
+    // 2. Revalidate in the background.
     async function load() {
       const [campusRes, locationRes] = await Promise.all([
         supabase.from("campuses").select("*").order("name"),
@@ -73,35 +97,22 @@ export default function ReportForm() {
       if (cancelled) return;
 
       if (campusRes.error || locationRes.error) {
-        setLoadError(
-          campusRes.error?.message ||
-            locationRes.error?.message ||
-            "Could not load campus list.",
-        );
-        setLoading(false);
+        // A cached list is still perfectly usable offline.
+        if (!cached) {
+          setLoadError(
+            campusRes.error?.message ||
+              locationRes.error?.message ||
+              "Could not load campus list.",
+          );
+          setLoading(false);
+        }
         return;
       }
 
       const cs = (campusRes.data ?? []) as Campus[];
       const ls = (locationRes.data ?? []) as CampusLocation[];
-      setCampuses(cs);
-      setLocations(ls);
-
-      // Prefill from the QR code when the ids are real, else fall back.
-      const presetCampus =
-        cs.find((c) => c.id === qrCampus)?.id ??
-        cs.find((c) => c.code === qrCampus?.toUpperCase())?.id ??
-        cs[0]?.id ??
-        "";
-      setCampusId(presetCampus);
-
-      const presetLocation =
-        ls.find((l) => l.id === qrLocation && l.campus_id === presetCampus)?.id ??
-        ls.find((l) => l.campus_id === presetCampus)?.id ??
-        "";
-      setLocationId(presetLocation);
-
-      setLoading(false);
+      applyData(cs, ls);
+      writeCache(cs, ls);
     }
 
     void load();
@@ -109,6 +120,12 @@ export default function ReportForm() {
       cancelled = true;
     };
   }, [qrCampus, qrLocation]);
+
+  // Resolve the QR-specified floor once locations are available.
+  useEffect(() => {
+    if (!qrLocation || locationId) return;
+    if (locations.some((l) => l.id === qrLocation)) setLocationId(qrLocation);
+  }, [qrLocation, locations, locationId]);
 
   // Ask for a position early so a fix is usually ready by the time they submit.
   useEffect(() => {
@@ -353,6 +370,8 @@ export default function ReportForm() {
             serious — bleeding, smoke, someone unconscious.
           </span>
         </label>
+
+        <VoiceInput onText={setDescription} existing={description} />
       </section>
 
       {/* Who */}

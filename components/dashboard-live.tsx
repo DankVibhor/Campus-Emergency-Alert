@@ -2,16 +2,10 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import {
-  BellRing,
-  BellOff,
-  Check,
-  CircleCheckBig,
-  Clock,
-  MapPin,
-  TriangleAlert,
-} from "lucide-react";
+import { BellRing, BellOff, Check, CircleCheckBig, MapPin } from "lucide-react";
+import { ElapsedSince, EscalationCountdown } from "@/components/live-time";
 import { supabase } from "@/lib/supabase-browser";
+import { useLiveSync } from "@/lib/use-live-sync";
 import * as alarm from "@/lib/alarm";
 import {
   PRIORITY_STYLES,
@@ -38,6 +32,16 @@ const ESCALATE_AFTER: Record<Priority, number> = {
 
 const ACTIVE_STATUSES = ["reported", "classified", "acknowledged"];
 
+const ALARM_PREF_KEY = "aegis.alarm";
+
+function rememberAlarmPref(on: boolean) {
+  try {
+    window.localStorage.setItem(ALARM_PREF_KEY, on ? "on" : "off");
+  } catch {
+    /* storage unavailable - the toggle still works for this session */
+  }
+}
+
 export default function DashboardLive() {
   const [incidents, setIncidents] = useState<Incident[]>([]);
   const [campuses, setCampuses] = useState<Campus[]>([]);
@@ -49,71 +53,59 @@ export default function DashboardLive() {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
 
-  // Drives the elapsed-time and countdown labels.
-  const [, tick] = useState(0);
-  useEffect(() => {
-    const id = window.setInterval(() => tick((n) => n + 1), 1000);
-    return () => window.clearInterval(id);
+  // No global ticker here on purpose: the clock labels own their own timers
+  // (see components/live-time.tsx) so a second passing repaints one span
+  // instead of re-rendering every card and the SVG map.
+
+  // ---- loading + live sync ------------------------------------------------
+  const load = useCallback(async () => {
+    const [incidentRes, campusRes, locationRes] = await Promise.all([
+      supabase
+        .from("incidents")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(100),
+      supabase.from("campuses").select("*").order("name"),
+      supabase.from("locations").select("*"),
+    ]);
+
+    if (incidentRes.data) setIncidents(incidentRes.data as Incident[]);
+    if (campusRes.data) setCampuses(campusRes.data as Campus[]);
+    if (locationRes.data) setLocations(locationRes.data as CampusLocation[]);
+    setLoading(false);
   }, []);
 
-  // ---- initial load -------------------------------------------------------
   useEffect(() => {
-    let cancelled = false;
-
-    async function load() {
-      const [incidentRes, campusRes, locationRes] = await Promise.all([
-        supabase
-          .from("incidents")
-          .select("*")
-          .order("created_at", { ascending: false })
-          .limit(100),
-        supabase.from("campuses").select("*").order("name"),
-        supabase.from("locations").select("*"),
-      ]);
-
-      if (cancelled) return;
-      setIncidents((incidentRes.data ?? []) as Incident[]);
-      setCampuses((campusRes.data ?? []) as Campus[]);
-      setLocations((locationRes.data ?? []) as CampusLocation[]);
-      setLoading(false);
-    }
-
     void load();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  }, [load]);
 
-  // ---- realtime -----------------------------------------------------------
-  useEffect(() => {
-    const channel = supabase
-      .channel("dashboard:incidents")
-      .on(
-        "postgres_changes",
-        { event: "INSERT", schema: "public", table: "incidents" },
-        (payload) => {
-          const row = payload.new as Incident;
-          setIncidents((prev) =>
-            prev.some((i) => i.id === row.id) ? prev : [row, ...prev],
-          );
-        },
-      )
-      .on(
-        "postgres_changes",
-        { event: "UPDATE", schema: "public", table: "incidents" },
-        (payload) => {
-          const row = payload.new as Incident;
-          setIncidents((prev) =>
-            prev.map((i) => (i.id === row.id ? row : i)),
-          );
-        },
-      )
-      .subscribe();
-
-    return () => {
-      void supabase.removeChannel(channel);
-    };
-  }, []);
+  // Live updates, plus a resync on (re)connect and a polling fallback, so the
+  // board is never stale even if the websocket is slow or blocked.
+  useLiveSync(
+    "dashboard:incidents",
+    (channel) =>
+      channel
+        .on(
+          "postgres_changes",
+          { event: "INSERT", schema: "public", table: "incidents" },
+          (payload) => {
+            const row = payload.new as Incident;
+            setIncidents((prev) =>
+              prev.some((i) => i.id === row.id) ? prev : [row, ...prev],
+            );
+          },
+        )
+        .on(
+          "postgres_changes",
+          { event: "UPDATE", schema: "public", table: "incidents" },
+          (payload) => {
+            const row = payload.new as Incident;
+            setIncidents((prev) => prev.map((i) => (i.id === row.id ? row : i)));
+          },
+        ),
+    load,
+    { pollMs: 10_000 },
+  );
 
   // ---- escalation sweep ---------------------------------------------------
   // The dashboard drives escalation so the demo needs no external cron.
@@ -189,17 +181,60 @@ export default function DashboardLive() {
 
   useEffect(() => () => alarm.stop(), []);
 
-  const toggleSound = useCallback(() => {
+  const [soundError, setSoundError] = useState<string | null>(null);
+
+  const toggleSound = useCallback(async () => {
     if (soundOn) {
       alarm.stop();
       setSoundOn(false);
+      rememberAlarmPref(false);
       return;
     }
-    // Must run inside this tap, or iOS refuses to unlock the audio context.
-    const ok = alarm.arm();
+    // arm() is called synchronously inside this tap, which is what iOS
+    // requires; it plays a confirmation chirp so the user knows it worked.
+    const ok = await alarm.arm();
     setSoundOn(ok);
+    rememberAlarmPref(ok);
+    setSoundError(
+      ok ? null : "This browser blocked audio. Check the silent switch or site sound settings.",
+    );
     if (ok && criticalUnacked.length > 0) alarm.start();
   }, [soundOn, criticalUnacked.length]);
+
+  // Audio is suspended on screen lock; resume it when the tab returns.
+  useEffect(() => alarm.watchVisibility(), []);
+
+  // The alarm preference used to reset to off every time this component
+  // remounted (navigating back to the dashboard, or router.refresh after an
+  // action). Persist it, and try to re-arm automatically on return — Chrome
+  // remembers the audio grant per-origin, so this usually succeeds silently.
+  useEffect(() => {
+    let cancelled = false;
+    if (typeof window === "undefined") return;
+
+    let wanted = false;
+    try {
+      wanted = window.localStorage.getItem(ALARM_PREF_KEY) === "on";
+    } catch {
+      return;
+    }
+    if (!wanted) return;
+
+    void (async () => {
+      const ok = await alarm.arm();
+      if (cancelled) return;
+      setSoundOn(ok);
+      if (!ok) {
+        setSoundError(
+          "Alarm is on for this account but this browser needs one tap to allow sound.",
+        );
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // ---- actions ------------------------------------------------------------
   const act = useCallback(
@@ -244,8 +279,8 @@ export default function DashboardLive() {
       {/* Alarm control */}
       <button
         type="button"
-        onClick={toggleSound}
-        className={`press tap flex items-center justify-between rounded-2xl border-2 px-4 py-3 ${
+        onClick={() => void toggleSound()}
+        className={`tap flex items-center justify-between rounded-2xl border-2 px-4 py-3 active:bg-slate-100 ${
           soundOn ? "border-red-600 bg-red-50" : "border-slate-200 bg-white"
         }`}
       >
@@ -272,6 +307,12 @@ export default function DashboardLive() {
           </span>
         ) : null}
       </button>
+
+      {soundError ? (
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
+          <p className="text-sm font-semibold text-amber-900">{soundError}</p>
+        </div>
+      ) : null}
 
       <CampusMap
         campuses={campuses}
@@ -371,12 +412,6 @@ function IncidentCard({
   const unacked = !incident.acknowledged_at && active;
   const flashing = priority === "critical" && unacked;
 
-  const ageSeconds = Math.max(
-    0,
-    Math.floor((Date.now() - new Date(incident.created_at).getTime()) / 1000),
-  );
-  const escalateIn = Math.max(0, ESCALATE_AFTER[priority] - ageSeconds);
-
   return (
     <li
       className={`rounded-2xl border-2 px-4 py-4 ${
@@ -389,14 +424,14 @@ function IncidentCard({
     >
       <div className="flex items-start justify-between gap-3">
         <span
-          className={`rounded-full px-2.5 py-1 text-[11px] font-extrabold tracking-wide ${style.badge}`}
+          className={`inline-flex shrink-0 whitespace-nowrap items-center rounded-full px-2.5 py-1 text-[11px] font-extrabold tracking-wide leading-none ${style.badge}`}
         >
           {incident.final_priority ? style.label : "CLASSIFYING"}
         </span>
-        <span className="flex items-center gap-1 text-xs font-semibold text-slate-500">
-          <Clock size={13} aria-hidden="true" />
-          {formatAge(ageSeconds)}
-        </span>
+        <ElapsedSince
+          iso={incident.created_at}
+          className="text-xs font-semibold text-slate-500"
+        />
       </div>
 
       <p className="mt-2 text-base font-extrabold capitalize leading-tight text-slate-900">
@@ -426,15 +461,11 @@ function IncidentCard({
 
       {/* Escalation countdown */}
       {unacked ? (
-        <p
-          className={`mt-2 flex items-center gap-1.5 text-xs font-bold ${
-            escalateIn === 0 ? "text-red-600" : "text-amber-600"
-          }`}
-        >
-          <TriangleAlert size={13} aria-hidden="true" />
-          {escalateIn === 0
-            ? "Escalating to next tier"
-            : `Escalates in ${escalateIn}s`}
+        <p className="mt-2">
+          <EscalationCountdown
+            createdAt={incident.created_at}
+            thresholdSeconds={ESCALATE_AFTER[priority]}
+          />
         </p>
       ) : null}
 
@@ -473,14 +504,6 @@ function IncidentCard({
       </div>
     </li>
   );
-}
-
-function formatAge(seconds: number) {
-  if (seconds < 60) return `${seconds}s`;
-  const m = Math.floor(seconds / 60);
-  if (m < 60) return `${m}m ${seconds % 60}s`;
-  const h = Math.floor(m / 60);
-  return `${h}h ${m % 60}m`;
 }
 
 function DashboardSkeleton() {

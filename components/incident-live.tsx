@@ -1,9 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { CheckCircle2, Clock, MapPin, Undo2 } from "lucide-react";
+import { ReportedAgo } from "@/components/live-time";
+import { speak } from "@/lib/speech";
+import { readSettings } from "@/lib/a11y-settings";
 import { supabase } from "@/lib/supabase-browser";
+import { useLiveSync } from "@/lib/use-live-sync";
 import {
   PRIORITY_STYLES,
   STATUS_LABELS,
@@ -88,41 +92,54 @@ export default function IncidentLive({ incidentId, justSent }: Props) {
     };
   }, [incidentId]);
 
-  // ---- realtime -----------------------------------------------------------
-  useEffect(() => {
-    const channel = supabase
-      .channel(`incident:${incidentId}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "UPDATE",
-          schema: "public",
-          table: "incidents",
-          filter: `id=eq.${incidentId}`,
-        },
-        (payload) => setIncident(payload.new as Incident),
-      )
-      .on(
-        "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "incident_events",
-          filter: `incident_id=eq.${incidentId}`,
-        },
-        (payload) => {
-          const next = payload.new as IncidentEvent;
-          setEvents((prev) =>
-            prev.some((e) => e.id === next.id) ? prev : [...prev, next],
-          );
-        },
-      )
-      .subscribe();
-
-    return () => {
-      void supabase.removeChannel(channel);
-    };
+  // ---- live sync ----------------------------------------------------------
+  // Resyncs whenever the channel connects and polls as a fallback, so the
+  // reporter never has to pull-to-refresh to see that help is on the way.
+  const resync = useCallback(async () => {
+    const [incidentRes, eventRes] = await Promise.all([
+      supabase.from("incidents").select("*").eq("id", incidentId).maybeSingle(),
+      supabase
+        .from("incident_events")
+        .select("*")
+        .eq("incident_id", incidentId)
+        .order("created_at", { ascending: true }),
+    ]);
+    if (incidentRes.data) setIncident(incidentRes.data as Incident);
+    if (eventRes.data) setEvents(eventRes.data as IncidentEvent[]);
   }, [incidentId]);
+
+  useLiveSync(
+    `incident:${incidentId}`,
+    (channel) =>
+      channel
+        .on(
+          "postgres_changes",
+          {
+            event: "UPDATE",
+            schema: "public",
+            table: "incidents",
+            filter: `id=eq.${incidentId}`,
+          },
+          (payload) => setIncident(payload.new as Incident),
+        )
+        .on(
+          "postgres_changes",
+          {
+            event: "INSERT",
+            schema: "public",
+            table: "incident_events",
+            filter: `incident_id=eq.${incidentId}`,
+          },
+          (payload) => {
+            const next = payload.new as IncidentEvent;
+            setEvents((prev) =>
+              prev.some((e) => e.id === next.id) ? prev : [...prev, next],
+            );
+          },
+        ),
+    resync,
+    { pollMs: 8000 },
+  );
 
   // ---- classification safety net -----------------------------------------
   // If the post-submit classify call was lost (navigation, flaky network), the
@@ -144,6 +161,30 @@ export default function IncidentLive({ incidentId, justSent }: Props) {
 
     return () => window.clearTimeout(id);
   }, [incident, incidentId]);
+
+  // ---- spoken status updates ---------------------------------------------
+  // A blind reporter cannot watch the page change, so announce transitions.
+  // The aria-live region below covers screen-reader users; this covers people
+  // who have the app open but are not running one.
+  const spokenStatus = useRef<string | null>(null);
+  useEffect(() => {
+    if (!incident) return;
+    const key = `${incident.status}:${incident.final_priority ?? ""}`;
+    if (spokenStatus.current === key) return;
+
+    const first = spokenStatus.current === null;
+    spokenStatus.current = key;
+    if (first && !justSent) return; // don't narrate a page the user just opened
+
+    if (!readSettings().voice) return;
+
+    const priorityWord = incident.final_priority
+      ? `Priority ${incident.final_priority}. `
+      : "";
+    speak(`${priorityWord}${STATUS_LABELS[incident.status]}.`, {
+      interrupt: true,
+    });
+  }, [incident, justSent]);
 
   // ---- false-alarm countdown ---------------------------------------------
   useEffect(() => {
@@ -178,8 +219,6 @@ export default function IncidentLive({ incidentId, justSent }: Props) {
     }
   }, [incidentId]);
 
-  const elapsedLabel = useElapsed(incident?.created_at);
-
   const priority: Priority | null = incident?.final_priority ?? null;
   const style = priority ? PRIORITY_STYLES[priority] : null;
 
@@ -208,6 +247,14 @@ export default function IncidentLive({ incidentId, justSent }: Props) {
 
   return (
     <div className="flex flex-col gap-5">
+      {/* Screen readers announce status transitions without stealing focus. */}
+      <p className="sr-only" role="status" aria-live="polite">
+        {incident.final_priority
+          ? `Priority ${incident.final_priority}. `
+          : "Classifying. "}
+        {STATUS_LABELS[incident.status]}
+      </p>
+
       {/* Status headline */}
       <section
         className={`rounded-2xl border px-5 py-5 ${
@@ -224,12 +271,12 @@ export default function IncidentLive({ incidentId, justSent }: Props) {
           </span>
           {style && !cancelled ? (
             <span
-              className={`rounded-full px-3 py-1 text-xs font-extrabold tracking-wide ${style.badge}`}
+              className={`inline-flex shrink-0 whitespace-nowrap items-center rounded-full px-3 py-1 text-xs font-extrabold tracking-wide leading-none ${style.badge}`}
             >
               {style.label}
             </span>
           ) : (
-            <span className="rounded-full bg-slate-200 px-3 py-1 text-xs font-extrabold tracking-wide text-slate-600">
+            <span className="inline-flex shrink-0 items-center whitespace-nowrap rounded-full bg-slate-200 px-3 py-1 text-xs font-extrabold leading-none tracking-wide text-slate-600">
               {priority ? PRIORITY_STYLES[priority].label : "CLASSIFYING…"}
             </span>
           )}
@@ -241,7 +288,7 @@ export default function IncidentLive({ incidentId, justSent }: Props) {
 
         <p className="mt-1 flex items-center gap-1.5 text-sm text-slate-500">
           <Clock size={14} aria-hidden="true" />
-          Reported {elapsedLabel}
+          Reported <ReportedAgo iso={incident.created_at} />
         </p>
 
         {incident.ai_reasoning && !cancelled ? (
@@ -407,27 +454,6 @@ function formatTime(iso: string) {
   } catch {
     return iso;
   }
-}
-
-/** Live "2m 14s ago" label. */
-function useElapsed(iso?: string | null) {
-  const [, force] = useState(0);
-  useEffect(() => {
-    const id = window.setInterval(() => force((n) => n + 1), 1000);
-    return () => window.clearInterval(id);
-  }, []);
-
-  return useMemo(() => {
-    if (!iso) return "just now";
-    const seconds = Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 1000));
-    if (seconds < 10) return "just now";
-    if (seconds < 60) return `${seconds}s ago`;
-    const m = Math.floor(seconds / 60);
-    const s = seconds % 60;
-    if (m < 60) return `${m}m ${s}s ago`;
-    const h = Math.floor(m / 60);
-    return `${h}h ${m % 60}m ago`;
-  }, [iso]);
 }
 
 function IncidentSkeleton() {
