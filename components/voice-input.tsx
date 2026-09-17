@@ -3,6 +3,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Mic, Square } from "lucide-react";
 import { canListen, startDictation, type Dictation } from "@/lib/speech";
+import {
+  SPEECH_LOCALES,
+  readSettings,
+  type SpeechLang,
+} from "@/lib/a11y-settings";
+import { LISTENING_LABEL, SPEAK_INSTEAD_OF_TYPING } from "@/lib/phrases";
 
 interface Props {
   /** Receives the transcript as the user speaks. */
@@ -22,11 +28,15 @@ export default function VoiceInput({ onText, existing }: Props) {
   const [supported, setSupported] = useState(false);
   const [listening, setListening] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [lang, setLang] = useState<SpeechLang>("en");
   const sessionRef = useRef<Dictation | null>(null);
   const baseRef = useRef("");
 
   // Feature detection must run client-side to avoid a hydration mismatch.
-  useEffect(() => setSupported(canListen()), []);
+  useEffect(() => {
+    setSupported(canListen());
+    setLang(readSettings().language);
+  }, []);
 
   useEffect(
     () => () => {
@@ -44,8 +54,11 @@ export default function VoiceInput({ onText, existing }: Props) {
   const start = useCallback(() => {
     setError(null);
     baseRef.current = existing.trim();
+    const settings = readSettings();
+    setLang(settings.language);
 
     const session = startDictation({
+      lang: SPEECH_LOCALES[settings.language],
       onText: (text) => {
         const prefix = baseRef.current ? `${baseRef.current} ` : "";
         onText(`${prefix}${text}`);
@@ -88,7 +101,7 @@ export default function VoiceInput({ onText, existing }: Props) {
         ) : (
           <Mic size={18} aria-hidden="true" />
         )}
-        {listening ? "Listening… tap to stop" : "Speak instead of typing"}
+        {listening ? LISTENING_LABEL[lang] : SPEAK_INSTEAD_OF_TYPING[lang]}
       </button>
 
       <span className="sr-only" aria-live="polite">

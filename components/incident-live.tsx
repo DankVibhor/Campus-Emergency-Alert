@@ -6,6 +6,7 @@ import { CheckCircle2, Clock, MapPin, Undo2 } from "lucide-react";
 import { ReportedAgo } from "@/components/live-time";
 import { speak } from "@/lib/speech";
 import { readSettings } from "@/lib/a11y-settings";
+import { speakStatus } from "@/lib/phrases";
 import { supabase } from "@/lib/supabase-browser";
 import { useLiveSync } from "@/lib/use-live-sync";
 import {
@@ -176,14 +177,13 @@ export default function IncidentLive({ incidentId, justSent }: Props) {
     spokenStatus.current = key;
     if (first && !justSent) return; // don't narrate a page the user just opened
 
-    if (!readSettings().voice) return;
+    const settings = readSettings();
+    if (!settings.voice) return;
 
-    const priorityWord = incident.final_priority
-      ? `Priority ${incident.final_priority}. `
-      : "";
-    speak(`${priorityWord}${STATUS_LABELS[incident.status]}.`, {
-      interrupt: true,
-    });
+    speak(
+      speakStatus(settings.language, incident.status, incident.final_priority),
+      { interrupt: true },
+    );
   }, [incident, justSent]);
 
   // ---- false-alarm countdown ---------------------------------------------

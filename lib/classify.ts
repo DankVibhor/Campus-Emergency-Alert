@@ -38,6 +38,42 @@ const CRITICAL_TERMS = [
   "suicide",
   "no pulse",
   "severe",
+
+  // Hindi (Devanagari). Students report in the language they panic in.
+  "बेहोश",
+  "सांस नहीं",
+  "साँस नहीं",
+  "खून",
+  "ख़ून",
+  "आग",
+  "धुआं",
+  "धुआँ",
+  "गिर गया",
+  "गिर गयी",
+  "चाकू",
+  "बंदूक",
+  "दौरा",
+  "सीने में दर्द",
+  "दम घुट",
+  "डूब",
+  "जल गया",
+  "मर रहा",
+  "मर रही",
+
+  // Romanised Hindi, which is how most people actually type.
+  "behosh",
+  "saans nahi",
+  "sans nahi",
+  "khoon",
+  "aag",
+  "dhuan",
+  "gir gaya",
+  "chaku",
+  "bandook",
+  "seene mein dard",
+  "dam ghut",
+  "mar raha",
+  "mar rahi",
 ];
 
 const URGENT_TERMS = [
@@ -61,6 +97,25 @@ const URGENT_TERMS = [
   "pain",
   "fell",
   "fall",
+
+  // Hindi (Devanagari)
+  "चोट",
+  "बुखार",
+  "उल्टी",
+  "चक्कर",
+  "दर्द",
+  "मोच",
+  "घबराहट",
+  "सूजन",
+
+  // Romanised Hindi
+  "chot",
+  "bukhar",
+  "ulti",
+  "chakkar",
+  "dard",
+  "moch",
+  "ghabrahat",
 ];
 
 /** Emergency categories that are never merely "normal". */
@@ -73,7 +128,9 @@ const TYPE_FLOOR: Record<string, Priority> = {
 };
 
 function normalise(text: string) {
-  return text.toLowerCase().replace(/[^a-z0-9\s']/g, " ");
+  // Devanagari (U+0900-U+097F) must survive: stripping to a-z alone would
+  // silently blank a Hindi report and classify a real emergency as normal.
+  return text.toLowerCase().replace(/[^a-z0-9ऀ-ॿ\s']/g, " ");
 }
 
 function containsTerm(haystack: string, term: string) {
@@ -140,6 +197,8 @@ Rules:
 - "critical" = immediate risk to life or to the building (unconscious, not breathing, heavy bleeding, fire, weapon, seizure, chest pain).
 - "urgent" = needs attention soon but not life-threatening (sprain, fever, minor cut, panic attack).
 - "normal" = routine, no injury implied.
+The description may be in English, Hindi (Devanagari), or romanised Hinglish —
+students report in whatever language they panic in. Read it in any of those.
 When the description is vague, judge by the emergency type and err on the side of caution.
 
 Respond with JSON only, no markdown:

@@ -1,13 +1,15 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Contrast, Mic, Type, Volume2 } from "lucide-react";
+import { Contrast, Languages, Mic, Type, Volume2 } from "lucide-react";
 import {
   DEFAULT_SETTINGS,
+  SPEECH_LOCALES,
   readSettings,
   writeSettings,
   type A11ySettings,
 } from "@/lib/a11y-settings";
+import { VOICE_CONFIRMATION, VOICE_TEST } from "@/lib/phrases";
 import { canListen, canSpeak, primeSpeech, speak, stopSpeaking } from "@/lib/speech";
 
 export default function AccessibilitySettings() {
@@ -32,12 +34,18 @@ export default function AccessibilitySettings() {
     // iOS requires, and it proves to a blind user that it worked.
     if (patch.voice === true) {
       primeSpeech();
-      speak(
-        "Voice announcements are on. Aegis will read status updates aloud.",
-        { interrupt: true },
-      );
+      speak(VOICE_CONFIRMATION[next.language], { interrupt: true });
     }
     if (patch.voice === false) stopSpeaking();
+
+    // Changing language should demonstrate the new voice straight away.
+    if (patch.language && next.voice) {
+      primeSpeech();
+      speak(VOICE_CONFIRMATION[patch.language], {
+        interrupt: true,
+        lang: SPEECH_LOCALES[patch.language],
+      });
+    }
   }
 
   if (!ready) {
@@ -46,6 +54,39 @@ export default function AccessibilitySettings() {
 
   return (
     <div className="flex flex-col gap-3">
+      {/* Language */}
+      <div className="rounded-2xl border-2 border-slate-200 px-4 py-4">
+        <p className="flex items-center gap-2 text-base font-bold text-slate-900">
+          <Languages size={22} className="text-red-600" aria-hidden="true" />
+          Voice language / आवाज़ की भाषा
+        </p>
+        <p className="mt-1 text-sm leading-snug text-slate-600">
+          Used for reading alerts aloud and for voice input.
+        </p>
+        <div className="mt-3 flex gap-2">
+          {(
+            [
+              { value: "en", label: "English" },
+              { value: "hi", label: "हिन्दी" },
+            ] as const
+          ).map((option) => (
+            <button
+              key={option.value}
+              type="button"
+              aria-pressed={settings.language === option.value}
+              onClick={() => update({ language: option.value })}
+              className={`tap flex-1 rounded-xl border-2 px-4 py-3 text-base font-bold active:bg-slate-100 ${
+                settings.language === option.value
+                  ? "border-red-600 bg-red-50 text-red-700"
+                  : "border-slate-300 bg-white text-slate-800"
+              }`}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
       <Toggle
         icon={<Volume2 size={22} aria-hidden="true" />}
         title="Voice announcements"
@@ -91,10 +132,7 @@ export default function AccessibilitySettings() {
         type="button"
         onClick={() => {
           primeSpeech();
-          speak(
-            "This is how Aegis will read alerts to you. To report an emergency, open the Report tab, choose a type, and hold the S O S button for two seconds.",
-            { interrupt: true },
-          );
+          speak(VOICE_TEST[settings.language], { interrupt: true });
         }}
         disabled={!speechSupported}
         className="tap rounded-2xl border-2 border-slate-300 px-6 py-4 text-base font-bold text-slate-900 active:bg-slate-100 disabled:opacity-50"

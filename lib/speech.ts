@@ -7,7 +7,12 @@
  *  - SpeechRecognition (listening): Chrome/Android and desktop Chrome only.
  *    iOS Safari does not implement it at all, so the UI must hide the control
  *    rather than offer a button that silently does nothing.
+ *
+ * Both honour the saved language preference, so a student more fluent in Hindi
+ * can dictate in Hindi and hear updates read back in Hindi.
  */
+
+import { SPEECH_LOCALES, readSettings } from "./a11y-settings";
 
 // ---------------------------------------------------------------------------
 // Output
@@ -37,6 +42,23 @@ export interface SpeakOptions {
   /** Cancel anything currently being spoken first. */
   interrupt?: boolean;
   rate?: number;
+  /** BCP-47 tag, e.g. "hi-IN". Defaults to the saved preference. */
+  lang?: string;
+}
+
+/** Picks an installed voice for the locale, falling back to the language. */
+function voiceFor(lang: string): SpeechSynthesisVoice | undefined {
+  try {
+    const voices = window.speechSynthesis.getVoices();
+    if (!voices.length) return undefined;
+    const base = lang.split("-")[0];
+    return (
+      voices.find((v) => v.lang === lang) ??
+      voices.find((v) => v.lang.replace("_", "-").startsWith(base))
+    );
+  } catch {
+    return undefined;
+  }
 }
 
 export function speak(text: string, options: SpeakOptions = {}): void {
@@ -44,11 +66,19 @@ export function speak(text: string, options: SpeakOptions = {}): void {
   try {
     const synth = window.speechSynthesis;
     if (options.interrupt) synth.cancel();
+
+    const lang = options.lang ?? SPEECH_LOCALES[readSettings().language];
     const u = new SpeechSynthesisUtterance(text);
     // Slightly slower than default: this is used for emergency information.
     u.rate = options.rate ?? 0.95;
     u.pitch = 1;
-    u.lang = "en-IN";
+    u.lang = lang;
+
+    // Without an explicit voice, some Android builds read Devanagari with an
+    // English voice, which is unintelligible.
+    const match = voiceFor(lang);
+    if (match) u.voice = match;
+
     synth.speak(u);
   } catch {
     /* speech is an enhancement, never a dependency */
@@ -114,13 +144,15 @@ export function startDictation(handlers: {
   onText: (text: string, isFinal: boolean) => void;
   onError?: (message: string) => void;
   onEnd?: () => void;
+  /** BCP-47 tag. Defaults to the saved language preference. */
+  lang?: string;
 }): Dictation | null {
   const Ctor = recognitionCtor();
   if (!Ctor) return null;
 
   try {
     const rec = new Ctor();
-    rec.lang = "en-IN";
+    rec.lang = handlers.lang ?? SPEECH_LOCALES[readSettings().language];
     rec.continuous = true;
     rec.interimResults = true;
 

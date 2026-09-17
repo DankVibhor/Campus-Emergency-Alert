@@ -8,6 +8,14 @@
 
 const KEY = "aegis.a11y.v1";
 
+/** Spoken/dictated language. The interface itself stays in English. */
+export type SpeechLang = "en" | "hi";
+
+export const SPEECH_LOCALES: Record<SpeechLang, string> = {
+  en: "en-IN",
+  hi: "hi-IN",
+};
+
 export interface A11ySettings {
   /** Read status changes and confirmations aloud. */
   voice: boolean;
@@ -15,12 +23,15 @@ export interface A11ySettings {
   largeText: boolean;
   /** Stronger borders and darker secondary text. */
   highContrast: boolean;
+  /** Language used for speaking and for voice dictation. */
+  language: SpeechLang;
 }
 
 export const DEFAULT_SETTINGS: A11ySettings = {
   voice: false,
   largeText: false,
   highContrast: false,
+  language: "en",
 };
 
 export function readSettings(): A11ySettings {

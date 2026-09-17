@@ -8,6 +8,7 @@ import { useLiveSync } from "@/lib/use-live-sync";
 import * as alarm from "@/lib/alarm";
 import { primeSpeech, speak } from "@/lib/speech";
 import { readSettings } from "@/lib/a11y-settings";
+import { speakStaffAlert } from "@/lib/phrases";
 import {
   PRIORITY_STYLES,
   type Campus,
@@ -102,11 +103,10 @@ export default function CriticalWatch() {
 
       if (priority === "critical") alarm.start();
 
-      if (readSettings().voice) {
+      const settings = readSettings();
+      if (settings.voice) {
         speak(
-          `${priority} emergency. ${row.emergency_type} at ${where}. ${
-            row.description ?? ""
-          }`,
+          speakStaffAlert(settings.language, priority, row.emergency_type, where),
           { interrupt: true },
         );
       }
@@ -119,10 +119,16 @@ export default function CriticalWatch() {
             {
               body: `${where}\n${row.description ?? "No description given."}`,
               tag: row.id,
+              // Critical alerts stay on screen until the responder acts.
               requireInteraction: priority === "critical",
               icon: "/icon-192.png",
               badge: "/icon-192.png",
-            },
+              // Android buzzes an SOS-like pattern. The web platform gives no
+              // control over the notification tone itself — the OS picks it —
+              // so the in-app alarm carries the sound.
+              vibrate: priority === "critical" ? [300, 150, 300, 150, 600] : [200, 100, 200],
+              silent: false,
+            } as NotificationOptions,
           );
           n.onclick = () => {
             window.focus();
