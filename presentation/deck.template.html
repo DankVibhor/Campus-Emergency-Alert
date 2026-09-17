@@ -1,0 +1,932 @@
+<title>ASMT Aegis Pitch Deck</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800;900&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+  :root {
+    --ground: #ffffff;
+    --surface: #f6f5f4;
+    --surface-2: #ecebe9;
+    --ink: #17161a;
+    --ink-soft: #55525c;
+    --ink-mute: #85828c;
+    --rule: #dedcd9;
+    --accent: #dc2626;
+    --accent-deep: #991b1b;
+    --accent-wash: #fdeceb;
+    --good: #15803d;
+    --warn: #b45309;
+    --display: "Archivo", "Arial Narrow", system-ui, sans-serif;
+    --body: "IBM Plex Sans", system-ui, -apple-system, sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, "SF Mono", monospace;
+  }
+
+  :root:not([data-theme="light"]) { }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: #131215;
+      --surface: #1c1b1f;
+      --surface-2: #26242a;
+      --ink: #f4f3f1;
+      --ink-soft: #b9b5bd;
+      --ink-mute: #8b8792;
+      --rule: #322f37;
+      --accent: #f2564a;
+      --accent-deep: #ff8a7e;
+      --accent-wash: #2b1917;
+      --good: #4ade80;
+      --warn: #fbbf24;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground: #131215;
+    --surface: #1c1b1f;
+    --surface-2: #26242a;
+    --ink: #f4f3f1;
+    --ink-soft: #b9b5bd;
+    --ink-mute: #8b8792;
+    --rule: #322f37;
+    --accent: #f2564a;
+    --accent-deep: #ff8a7e;
+    --accent-wash: #2b1917;
+    --good: #4ade80;
+    --warn: #fbbf24;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--body);
+    font-size: 15px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap {
+    max-width: 1120px;
+    margin: 0 auto;
+    padding-inline: 20px;
+    padding-block: 28px 80px;
+  }
+
+  /* ---- toolbar ---- */
+  .bar {
+    position: sticky;
+    top: env(safe-area-inset-top, 0px);
+    z-index: 20;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    background: var(--ground);
+    border-bottom: 1px solid var(--rule);
+    padding: 10px 0 12px;
+    margin-bottom: 26px;
+  }
+  .bar-id { display: flex; align-items: center; gap: 10px; min-width: 0; }
+  .mark {
+    width: 26px; height: 26px; flex: none; border-radius: 6px;
+    background: var(--accent);
+    display: grid; place-items: center;
+    color: #fff; font-family: var(--display); font-weight: 900; font-size: 13px;
+  }
+  .bar-name {
+    font-family: var(--display); font-weight: 800; letter-spacing: -0.01em;
+    font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .bar-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+  .btn {
+    font-family: var(--body); font-size: 13px; font-weight: 600;
+    color: var(--ink); background: var(--surface);
+    border: 1px solid var(--rule); border-radius: 7px;
+    padding: 7px 12px; cursor: pointer;
+  }
+  .btn:hover { background: var(--surface-2); }
+  .btn:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+
+  /* ---- slides ---- */
+  .slide {
+    border: 1px solid var(--rule);
+    border-radius: 10px;
+    background: var(--ground);
+    padding: 34px 34px 38px;
+    margin-bottom: 20px;
+    scroll-margin-top: 80px;
+  }
+  .slide-head {
+    display: flex; align-items: baseline; gap: 12px;
+    border-bottom: 2px solid var(--ink);
+    padding-bottom: 10px; margin-bottom: 22px;
+    flex-wrap: wrap;
+  }
+  .slide-no {
+    font-family: var(--mono); font-size: 12px; font-weight: 600;
+    color: var(--accent); letter-spacing: 0.04em;
+  }
+  h2 {
+    font-family: var(--display); font-weight: 800; letter-spacing: -0.02em;
+    font-size: clamp(22px, 3.4vw, 31px); margin: 0; text-wrap: balance; flex: 1;
+  }
+  .kicker {
+    font-family: var(--mono); font-size: 11px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.14em; color: var(--ink-mute);
+  }
+
+  p { margin: 0 0 12px; max-width: 68ch; color: var(--ink-soft); }
+  p strong, li strong { color: var(--ink); font-weight: 600; }
+
+  ul.points { list-style: none; margin: 0; padding: 0; display: grid; gap: 11px; }
+  ul.points > li {
+    position: relative; padding-left: 010px; padding-inline-start: 22px;
+    color: var(--ink-soft); max-width: 72ch;
+  }
+  ul.points > li::before {
+    content: ""; position: absolute; left: 0; top: 9px;
+    width: 9px; height: 3px; background: var(--accent); border-radius: 2px;
+  }
+
+  .cols { display: grid; gap: 26px; grid-template-columns: 1fr 1fr; align-items: start; }
+  .cols-3 { display: grid; gap: 16px; grid-template-columns: repeat(3, 1fr); }
+  @media (max-width: 760px) {
+    .cols, .cols-3 { grid-template-columns: 1fr; }
+    .slide { padding: 24px 18px 28px; }
+  }
+
+  /* ---- title slide ---- */
+  .title-slide { border: none; padding: 0; margin-bottom: 26px; }
+  .title-band {
+    background: var(--accent); color: #fff;
+    border-radius: 12px; padding: 44px 34px 38px;
+  }
+  .title-band .eyebrow {
+    font-family: var(--mono); font-size: 12px; letter-spacing: 0.18em;
+    text-transform: uppercase; opacity: 0.9; margin-bottom: 14px;
+  }
+  .title-band h1 {
+    font-family: var(--display); font-weight: 900; letter-spacing: -0.035em;
+    font-size: clamp(34px, 7vw, 68px); line-height: 0.98; margin: 0 0 12px;
+    text-wrap: balance;
+  }
+  .title-band .sub {
+    font-size: clamp(15px, 2vw, 19px); max-width: 60ch; color: #fff; opacity: 0.94;
+    margin: 0;
+  }
+  .title-meta {
+    display: grid; gap: 16px; grid-template-columns: repeat(3, 1fr);
+    margin-top: 22px;
+  }
+  @media (max-width: 760px) { .title-meta { grid-template-columns: 1fr; } }
+  .meta-card {
+    background: var(--surface); border: 1px solid var(--rule);
+    border-radius: 10px; padding: 16px 18px;
+  }
+  .meta-card .label {
+    font-family: var(--mono); font-size: 10px; letter-spacing: 0.14em;
+    text-transform: uppercase; color: var(--ink-mute); margin-bottom: 7px;
+  }
+  .meta-card .value { font-weight: 600; color: var(--ink); }
+  .meta-card .value.team { font-family: var(--display); font-weight: 800; font-size: 20px; }
+  .roster { display: grid; gap: 3px; }
+  .roster span { font-weight: 600; color: var(--ink); }
+
+  /* ---- phones ---- */
+  .shots { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; }
+  @media (max-width: 900px) { .shots { grid-template-columns: repeat(2, 1fr); } }
+  figure.phone { margin: 0; display: grid; gap: 9px; }
+  figure.phone img {
+    width: 100%; max-width: 100%; display: block;
+    border: 1px solid var(--rule); border-radius: 12px; background: #fff;
+  }
+  figure.phone figcaption {
+    font-size: 12.5px; color: var(--ink-soft); line-height: 1.4;
+  }
+  figure.phone figcaption b {
+    display: block; color: var(--ink); font-weight: 650; font-size: 13px;
+  }
+
+  .shot-pair { display: grid; grid-template-columns: 210px 1fr; gap: 26px; align-items: start; }
+  @media (max-width: 760px) { .shot-pair { grid-template-columns: 1fr; } }
+  .shot-pair img {
+    width: 100%; display: block; border: 1px solid var(--rule);
+    border-radius: 12px; background: #fff;
+  }
+
+  /* ---- data bits ---- */
+  .stat-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin: 4px 0 20px; }
+  @media (max-width: 760px) { .stat-row { grid-template-columns: repeat(2, 1fr); } }
+  .stat { border-left: 3px solid var(--accent); padding: 2px 0 2px 12px; }
+  .stat .n {
+    font-family: var(--display); font-weight: 800; font-size: 30px;
+    line-height: 1.05; letter-spacing: -0.02em; font-variant-numeric: tabular-nums;
+  }
+  .stat .l { font-size: 12px; color: var(--ink-mute); }
+
+  pre {
+    font-family: var(--mono); font-size: 12.5px; line-height: 1.65;
+    background: var(--surface); border: 1px solid var(--rule);
+    border-radius: 9px; padding: 14px 16px; overflow-x: auto; margin: 0 0 14px;
+    color: var(--ink);
+  }
+  code { font-family: var(--mono); font-size: 0.92em; }
+  p code, li code {
+    background: var(--surface); border: 1px solid var(--rule);
+    border-radius: 4px; padding: 1px 5px;
+  }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  .tablewrap { overflow-x: auto; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--rule); vertical-align: top; }
+  th { font-family: var(--mono); font-size: 10.5px; text-transform: uppercase;
+       letter-spacing: 0.1em; color: var(--ink-mute); font-weight: 600; }
+  td strong { font-weight: 650; }
+
+  .pill {
+    display: inline-block; font-family: var(--mono); font-size: 10.5px;
+    font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase;
+    padding: 3px 8px; border-radius: 999px; white-space: nowrap;
+  }
+  .pill.crit { background: var(--accent); color: #fff; }
+  .pill.warnp { background: var(--warn); color: #fff; }
+  .pill.ok { background: var(--good); color: #fff; }
+  .pill.flat { background: var(--surface-2); color: var(--ink-soft); }
+
+  .callout {
+    border-left: 3px solid var(--accent); background: var(--accent-wash);
+    border-radius: 0 9px 9px 0; padding: 14px 16px; margin: 4px 0 16px;
+  }
+  .callout p { margin: 0; color: var(--ink); }
+
+  .flow { display: grid; gap: 8px; margin: 0 0 16px; }
+  .flow-step {
+    display: grid; grid-template-columns: 26px 1fr; gap: 12px; align-items: start;
+    border: 1px solid var(--rule); border-radius: 9px; padding: 11px 13px;
+    background: var(--surface);
+  }
+  .flow-step .idx {
+    font-family: var(--mono); font-size: 11px; font-weight: 600;
+    color: #fff; background: var(--accent); border-radius: 5px;
+    width: 26px; height: 22px; display: grid; place-items: center;
+  }
+  .flow-step .what { font-weight: 650; color: var(--ink); font-size: 14px; }
+  .flow-step .why { font-size: 13px; color: var(--ink-soft); }
+
+  .stack-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+  @media (max-width: 760px) { .stack-grid { grid-template-columns: 1fr; } }
+  .stack-item { border: 1px solid var(--rule); border-radius: 9px; padding: 13px 15px; }
+  .stack-item .t { font-weight: 650; color: var(--ink); margin-bottom: 3px; }
+  .stack-item .d { font-size: 13px; color: var(--ink-soft); }
+  .stack-item .tech {
+    font-family: var(--mono); font-size: 11px; color: var(--accent);
+    letter-spacing: 0.03em; margin-bottom: 6px; text-transform: uppercase; font-weight: 600;
+  }
+
+  footer.end {
+    text-align: center; padding: 30px 0 10px; color: var(--ink-mute); font-size: 13px;
+  }
+  a { color: var(--accent); }
+
+  @media print {
+    @page { size: A4 landscape; margin: 10mm; }
+    .bar { display: none; }
+    body { font-size: 11px; background: #fff; color: #000; }
+    .slide, .title-slide { break-inside: avoid; page-break-inside: avoid;
+                           break-after: page; page-break-after: always; border-color: #bbb; }
+    .slide:last-of-type { break-after: auto; page-break-after: auto; }
+    * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  }
+  @media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
+  html { scroll-behavior: smooth; }
+</style>
+
+<div class="wrap">
+
+  <div class="bar">
+    <div class="bar-id">
+      <span class="mark">A</span>
+      <span class="bar-name">ASMT Aegis — Bhand Coders</span>
+    </div>
+    <div class="bar-actions">
+      <button class="btn" id="prev" type="button">&larr; Prev</button>
+      <button class="btn" id="next" type="button">Next &rarr;</button>
+      <button class="btn" id="print" type="button">Save as PDF</button>
+    </div>
+  </div>
+
+  <!-- 1 TITLE -->
+  <section class="slide title-slide" id="s1">
+    <div class="title-band">
+      <div class="eyebrow">A.S.M.T. Hackathon 2K26 · Team Bhand Coders</div>
+      <h1>ASMT Aegis</h1>
+      <p class="sub">A campus emergency response system. Scan a QR code, hold one button,
+        and the right responder is alerted in seconds — with the urgency already judged.</p>
+    </div>
+    <div class="title-meta">
+      <div class="meta-card">
+        <div class="label">Team</div>
+        <div class="value team">Bhand Coders</div>
+      </div>
+      <div class="meta-card">
+        <div class="label">Built by</div>
+        <div class="value roster">
+          <span>Vibhor Mehta</span>
+          <span>Devanshu Gupta</span>
+          <span>Sunny Gujjar</span>
+        </div>
+      </div>
+      <div class="meta-card">
+        <div class="label">Live</div>
+        <div class="value"><a href="https://asmt-aegis.vercel.app">asmt-aegis.vercel.app</a></div>
+        <div class="label" style="margin-top:8px">Institution</div>
+        <div class="value" style="font-weight:500;font-size:13px;color:var(--ink-soft)">
+          Anangpuria School of Management &amp; Technology
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2 PROBLEM -->
+  <section class="slide" id="s2">
+    <div class="slide-head"><span class="slide-no">02</span><h2>The problem</h2></div>
+    <div class="cols">
+      <div>
+        <ul class="points">
+          <li><strong>Nobody knows the number.</strong> In an emergency a student opens their
+            contacts and hunts for a warden's number they never saved.</li>
+          <li><strong>The message loses the details.</strong> A phone call gives no record of
+            which block, which floor, or what was said.</li>
+          <li><strong>Everything is equally urgent.</strong> A sprained ankle and someone who
+            has stopped breathing arrive on the same WhatsApp group, in the same font.</li>
+          <li><strong>No one owns it.</strong> If the first person paged is teaching, in a
+            meeting, or asleep, nothing escalates — the report just sits there.</li>
+          <li><strong>The reporter is left blind.</strong> They have no idea whether help is
+            coming, so they call again, and again.</li>
+        </ul>
+      </div>
+      <div>
+        <div class="callout">
+          <p><strong>ASMT operates across three blocks.</strong> Main, Academic and Hostel —
+            a responder on the wrong side of campus is minutes away from someone who may
+            have seconds.</p>
+        </div>
+        <p>Aegis targets the gap between <em>something has happened</em> and
+          <em>the right person knows, and has said they are coming.</em></p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3 SOLUTION -->
+  <section class="slide" id="s3">
+    <div class="slide-head"><span class="slide-no">03</span><h2>What we built</h2></div>
+    <div class="stat-row">
+      <div class="stat"><div class="n">15s</div><div class="l">to file a report</div></div>
+      <div class="stat"><div class="n">3</div><div class="l">escalation tiers</div></div>
+      <div class="stat"><div class="n">2</div><div class="l">languages, spoken</div></div>
+      <div class="stat"><div class="n">100</div><div class="l">Lighthouse a11y</div></div>
+    </div>
+    <ul class="points">
+      <li><strong>An installable web app</strong> — no store, no download. Judges scan a QR
+        and it opens on their own phone.</li>
+      <li><strong>QR codes posted on every block</strong> pre-fill the location, so a panicking
+        student never picks from a dropdown.</li>
+      <li><strong>Urgency is judged automatically</strong> by a rule engine plus an AI second
+        opinion, and the more severe verdict wins.</li>
+      <li><strong>The right responder is paged on Telegram</strong> by block and role, and
+        escalates through tiers if nobody answers.</li>
+      <li><strong>The reporter watches it happen live</strong> — classified, notified,
+        acknowledged, with an ETA.</li>
+    </ul>
+  </section>
+
+  <!-- 4 DEMO FLOW -->
+  <section class="slide" id="s4">
+    <div class="slide-head"><span class="slide-no">04</span><h2>The 60-second demo</h2></div>
+    <div class="flow">
+      <div class="flow-step"><span class="idx">1</span><div>
+        <div class="what">Scan the printed QR code</div>
+        <div class="why">Report form opens with block and floor already filled in. No typing.</div></div></div>
+      <div class="flow-step"><span class="idx">2</span><div>
+        <div class="what">Tap Fire, describe it — or speak it</div>
+        <div class="why">Six emergency types, two columns, thumb-reachable. Voice input for hands-free.</div></div></div>
+      <div class="flow-step"><span class="idx">3</span><div>
+        <div class="what">Hold SOS for two seconds</div>
+        <div class="why">A ring fills around the button. Buzz on Android, beep and pulse on iOS.</div></div></div>
+      <div class="flow-step"><span class="idx">4</span><div>
+        <div class="what">Telegram fires</div>
+        <div class="why">🔴 CRITICAL with block, floor, description and a link to the incident.</div></div></div>
+      <div class="flow-step"><span class="idx">5</span><div>
+        <div class="what">It appears on the dashboard by itself</div>
+        <div class="why">No refresh. Card flashing red, alarm sounding, escalation counting down.</div></div></div>
+      <div class="flow-step"><span class="idx">6</span><div>
+        <div class="what">Responder taps Acknowledge</div>
+        <div class="why">Alarm stops, and the reporter's phone updates instantly with an ETA.</div></div></div>
+    </div>
+    <div class="callout">
+      <p><strong>The line to close on:</strong> every step degrades gracefully. Classification
+        works with the AI provider down, alerts work with a responder offline, and the report
+        survives having no network at all.</p>
+    </div>
+  </section>
+
+  <!-- 5 SCREENS -->
+  <section class="slide" id="s5">
+    <div class="slide-head"><span class="slide-no">05</span><h2>The app</h2>
+      <span class="kicker">Captured live</span></div>
+    <div class="shots">
+      <figure class="phone">
+        <img src="__SHOT_HOME__" alt="Aegis home screen with a large Report Emergency button">
+        <figcaption><b>Home</b>One oversized action. Everything else is secondary.</figcaption>
+      </figure>
+      <figure class="phone">
+        <img src="__SHOT_REPORT__" alt="Report form with block, floor and emergency type grid">
+        <figcaption><b>Report</b>Location pre-filled by QR. Six types, voice input, optional photo.</figcaption>
+      </figure>
+      <figure class="phone">
+        <img src="__SHOT_SAFEWALK__" alt="Safe Walk timer setup screen">
+        <figcaption><b>Safe Walk</b>A check-in timer whose expiry is itself the alarm.</figcaption>
+      </figure>
+      <figure class="phone">
+        <img src="__SHOT_ACCESSIBILITY__" alt="Accessibility settings with language, voice and contrast options">
+        <figcaption><b>Accessibility</b>Hindi or English voice, larger text, high contrast.</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <!-- 6 CLASSIFIER -->
+  <section class="slide" id="s6">
+    <div class="slide-head"><span class="slide-no">06</span><h2>Two-stage classification</h2>
+      <span class="kicker">Our differentiator</span></div>
+    <div class="cols">
+      <div>
+        <p>An emergency system that stops working when an API key expires is not an emergency
+          system. So the AI never sits on the critical path.</p>
+        <ul class="points">
+          <li><strong>Stage 1 — rule engine.</strong> A deterministic keyword scan that always
+            runs and cannot fail. English, Hindi and romanised Hinglish.</li>
+          <li><strong>Stage 2 — AI second opinion.</strong> One prompt to Claude or GPT under a
+            hard 4-second timeout, swappable with one env var.</li>
+          <li><strong>The more severe verdict wins.</strong> AI can escalate a report; it can
+            never talk the system down from a rule-matched emergency.</li>
+        </ul>
+        <div class="callout">
+          <p>During the build our OpenAI key ran out of credit mid-demo. The alert still went
+            out, correctly marked <span class="pill crit">Critical</span> — by design, not by luck.</p>
+        </div>
+      </div>
+      <div>
+        <div class="kicker" style="margin-bottom:8px">Live output, real report</div>
+<pre>description  "Student collapsed near the
+              stairs and is not breathing"
+
+rule_priority   critical
+rule_matched    ["not breathing", "collapsed"]
+ai_priority     null        (429 no credit)
+final_priority  critical    &lt;- rules carried it
+telegram        delivered
+
+--- Hindi, same pipeline ---
+"छात्र बेहोश है और खून बह रहा है"
+rule_priority   critical
+final_priority  critical</pre>
+        <p style="font-size:13px">A latent bug we caught here: the text normaliser stripped every
+          non-ASCII character, which silently blanked Devanagari and would have scored a real
+          emergency as <em>normal</em>.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 7 ESCALATION -->
+  <section class="slide" id="s7">
+    <div class="slide-head"><span class="slide-no">07</span><h2>Nobody answered. Now what?</h2></div>
+    <p>Most systems stop at "notification sent". Aegis treats silence as a failure state.</p>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Tier</th><th>Paged</th><th>Trigger</th><th>Recorded</th></tr></thead>
+        <tbody>
+          <tr><td><span class="pill crit">Tier 1</span></td><td>Medical + Security</td>
+              <td>On classification</td><td><code>escalations</code> row + timeline</td></tr>
+          <tr><td><span class="pill warnp">Tier 2</span></td><td>Security + Warden</td>
+              <td>60s unacknowledged (critical)</td><td>Re-notified on Telegram</td></tr>
+          <tr><td><span class="pill flat">Tier 3</span></td><td>Warden + Admin</td>
+              <td>A further threshold passes</td><td>Full audit trail</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <ul class="points" style="margin-top:16px">
+      <li><strong>Thresholds scale with severity</strong> — 60s critical, 180s urgent, 600s normal.</li>
+      <li><strong>Idempotent by construction.</strong> Each tier is paged exactly once, enforced
+        by the escalations table, so five open dashboards cannot page a warden five times.</li>
+      <li><strong>The countdown is visible</strong> on every card — "Escalates in 23s" — so
+        responders can see the clock they are racing.</li>
+      <li><strong>Missing the deadline sounds an alarm</strong> on the dashboard, not just a
+        silent database row.</li>
+    </ul>
+  </section>
+
+  <!-- 8 ACCESSIBILITY -->
+  <section class="slide" id="s8">
+    <div class="slide-head"><span class="slide-no">08</span><h2>Built for everyone on campus</h2></div>
+    <div class="shot-pair">
+      <img src="__SHOT_ACCESSIBILITY__" alt="Accessibility settings screen">
+      <div>
+        <ul class="points">
+          <li><strong>Hindi, spoken and understood.</strong> Dictate the emergency in Hindi and
+            hear status updates read back in Hindi. The classifier reads Devanagari and
+            Hinglish, so <em>"बेहोश"</em> and <em>"behosh"</em> both trigger critical.</li>
+          <li><strong>For blind users.</strong> Voice announcements read every status change
+            aloud, with <code>aria-live</code> regions for screen readers and accessible names
+            that match their visible labels so voice control can reach them.</li>
+          <li><strong>Hands-free reporting.</strong> Speak instead of typing — for someone who
+            cannot see the screen, and for anyone whose hands are dealing with the emergency.</li>
+          <li><strong>Larger text and high contrast</strong>, saved per device with no account.</li>
+          <li><strong>Lighthouse accessibility 100.</strong> We re-enabled pinch-zoom after
+            measuring that blocking it was the only thing keeping the score below 100.</li>
+        </ul>
+        <div class="callout">
+          <p>Our chart palette was validated programmatically: green and amber separate by only
+            ΔE 7 under protanopia, so <strong>every bar carries its label and count as text</strong>.
+            Colour is never the only signal.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 9 RESILIENCE -->
+  <section class="slide" id="s9">
+    <div class="slide-head"><span class="slide-no">09</span><h2>When things go wrong</h2>
+      <span class="kicker">Failure is the normal case</span></div>
+    <div class="cols-3">
+      <div class="stack-item">
+        <div class="tech">No network</div>
+        <div class="t">Offline outbox</div>
+        <div class="d">A failed report is written to IndexedDB and sends itself when signal
+          returns. The user sees "Saved — will send when online".</div>
+      </div>
+      <div class="stack-item">
+        <div class="tech">No data at all</div>
+        <div class="t">Voice and SMS fallback</div>
+        <div class="d">A permanent Call Security bar and a pre-filled emergency SMS, both of
+          which work on cellular voice with zero data.</div>
+      </div>
+      <div class="stack-item">
+        <div class="tech">Websocket blocked</div>
+        <div class="t">Triple-redundant live sync</div>
+        <div class="d">Realtime, plus a resync on every reconnect, plus polling. The screen
+          cannot silently freeze.</div>
+      </div>
+      <div class="stack-item">
+        <div class="tech">AI provider down</div>
+        <div class="t">Rule engine carries it</div>
+        <div class="d">Classification never depends on a third party being up.</div>
+      </div>
+      <div class="stack-item">
+        <div class="tech">Five reports, one fire</div>
+        <div class="t">Duplicate grouping</div>
+        <div class="d">Same type, same block, inside 10 minutes folds into the original —
+          one alert, shown as "Confirmed by 3 people".</div>
+      </div>
+      <div class="stack-item">
+        <div class="tech">False alarm</div>
+        <div class="t">10-second undo</div>
+        <div class="d">The reporter can withdraw immediately, until a responder acts on it.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 10 SAFE WALK -->
+  <section class="slide" id="s10">
+    <div class="slide-head"><span class="slide-no">10</span><h2>Safe Walk</h2>
+      <span class="kicker">Silence as the alarm</span></div>
+    <div class="shot-pair">
+      <img src="__SHOT_SAFEWALK__" alt="Safe Walk timer screen">
+      <div>
+        <p>Every other feature assumes the person can ask for help. This one assumes they cannot.</p>
+        <ul class="points">
+          <li>A student walking back to the hostel alone <strong>starts a timer</strong> — 5 to
+            30 minutes — before setting off.</li>
+          <li>Arriving safely takes <strong>one tap</strong>.</li>
+          <li>If the timer expires with no check-in, that silence <strong>raises a critical
+            security incident automatically</strong>, at their last known GPS position, and
+            pages tier 1.</li>
+          <li>The walker's own device triggers the sweep the moment its timer runs out, so the
+            alert does not wait for anyone to be watching a dashboard.</li>
+        </ul>
+        <div class="callout">
+          <p>The report is raised <strong>pre-classified as critical</strong> — a missed check-in
+            never waits on a classifier or an AI call.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 11 RESPONDER SIDE -->
+  <section class="slide" id="s11">
+    <div class="slide-head"><span class="slide-no">11</span><h2>The responder side</h2></div>
+    <div class="shot-pair">
+      <img src="__SHOT_DASHBOARD__" alt="Responder dashboard sign-in screen">
+      <div>
+        <ul class="points">
+          <li><strong>Live incident board</strong>, sorted by priority then by who has waited
+            longest. Critical cards flash and sound a looping alarm until acknowledged.</li>
+          <li><strong>Station-wide alerts.</strong> A signed-in responder on <em>any</em> screen
+            gets a takeover sheet, an alarm and an OS notification — one tap to the incident.</li>
+          <li><strong>Acknowledge sends their position</strong>, and the reporter immediately
+            sees a real ETA instead of an open-ended "on the way".</li>
+          <li><strong>Campus schematic</strong> showing all three blocks with live incident dots,
+            coloured by severity.</li>
+          <li><strong>QR generator</strong> — print every location code, four to a page.</li>
+          <li><strong>Analytics</strong> — median acknowledgement and resolution time, by block,
+            type and hour of day.</li>
+          <li><strong>Two ways in:</strong> Supabase magic-link email, plus a staff PIN, because
+            free-tier auth mail is rate-limited and a dashboard you cannot open during an
+            emergency is worthless.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- 12 ARCHITECTURE -->
+  <section class="slide" id="s12">
+    <div class="slide-head"><span class="slide-no">12</span><h2>How it fits together</h2></div>
+<pre>QR code  ──►  /report?campus=…&amp;location=…
+                 │  anonymous insert, enforced by Row Level Security
+                 ▼
+            incidents ──► /api/classify ──► rule engine   (always runs)
+                 │                     └──► LLM           (4s timeout)
+                 │                               │
+                 │                    final = MAX(rule, ai)
+                 │                               │
+                 │                               ├──► duplicate grouping
+                 │                               ├──► Telegram Bot API
+                 │                               └──► incident_events
+                 ▼
+         Supabase Realtime ──► reporter's live status page
+                            └──► responder dashboard ──► /api/escalate
+                                                    └──► /api/safe-walk/sweep</pre>
+    <div class="cols" style="margin-top:6px">
+      <ul class="points">
+        <li><strong>6 tables</strong> — campuses, locations, responders, incidents,
+          incident_events, escalations — plus push subscriptions and safe walks.</li>
+        <li><strong>Every state change is an event row</strong>, so each incident has a complete,
+          timestamped audit trail rather than just a current status.</li>
+      </ul>
+      <ul class="points">
+        <li><strong>Realtime on incidents and events</strong>, with <code>replica identity full</code>
+          so update payloads carry the whole row.</li>
+        <li><strong>11 pages, 10 API routes</strong>, first-load JS under 100 kB on the
+          public screens.</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- 13 SECURITY -->
+  <section class="slide" id="s13">
+    <div class="slide-head"><span class="slide-no">13</span><h2>Security model</h2></div>
+    <p>Reporting must be open to anyone on campus. Acting on a report must not be.</p>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Table</th><th>Anonymous</th><th>Signed-in staff</th><th>Why</th></tr></thead>
+        <tbody>
+          <tr><td><code>campuses</code>, <code>locations</code></td><td>read</td><td>read</td>
+              <td>A QR scan must work with no login</td></tr>
+          <tr><td><code>incidents</code></td><td>insert + read</td><td>read + update</td>
+              <td>Anyone may report; only staff may resolve</td></tr>
+          <tr><td><code>incident_events</code></td><td>insert + read</td><td>full</td>
+              <td>The reporter follows their own timeline</td></tr>
+          <tr><td><code>responders</code></td><td><strong>no access</strong></td><td>read</td>
+              <td>Holds staff phone numbers and Telegram IDs</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <ul class="points" style="margin-top:16px">
+      <li><strong>Responder contact details are the one thing anonymous users cannot read</strong> —
+        verified by querying the live API with the anon key and confirming it returns empty.</li>
+      <li><strong>The service-role key never reaches the browser.</strong> A <code>server-only</code>
+        import turns any accidental client import into a build error.</li>
+      <li><strong>Staff actions run server-side</strong> behind an HMAC-signed, httpOnly session
+        cookie with constant-time PIN comparison and brute-force throttling.</li>
+      <li><strong>Anonymous reporting is a feature</strong>, not a gap — harassment can be reported
+        without giving a name, while responders still get the exact location.</li>
+    </ul>
+  </section>
+
+  <!-- 14 STACK -->
+  <section class="slide" id="s14">
+    <div class="slide-head"><span class="slide-no">14</span><h2>What it is made of</h2></div>
+    <div class="stack-grid">
+      <div class="stack-item">
+        <div class="tech">Frontend</div>
+        <div class="t">Next.js 14 · App Router · TypeScript</div>
+        <div class="d">React Server Components with the public screens statically rendered, so
+          they paint instantly. Strict TypeScript throughout.</div>
+      </div>
+      <div class="stack-item">
+        <div class="tech">Styling</div>
+        <div class="t">Tailwind CSS</div>
+        <div class="d">A white-ground design system with safe-area insets, 48px touch targets
+          and no hover states — every control is designed for a thumb.</div>
+      </div>
+      <div class="stack-item">
+        <div class="tech">Backend</div>
+        <div class="t">Supabase — Postgres, Realtime, Auth, Storage</div>
+        <div class="d">Row Level Security on every table, live subscriptions, magic-link auth and
+          an image bucket for photo evidence.</div>
+      </div>
+      <div class="stack-item">
+        <div class="tech">Intelligence</div>
+        <div class="t">Rule engine + OpenAI / Anthropic</div>
+        <div class="d">Provider swappable with a single environment variable, behind a hard
+          timeout and a deterministic fallback.</div>
+      </div>
+      <div class="stack-item">
+        <div class="tech">Alerting</div>
+        <div class="t">Telegram Bot API</div>
+        <div class="d">Routed by campus and role, with priority emoji, location, description and
+          a deep link. No Twilio, no Firebase.</div>
+      </div>
+      <div class="stack-item">
+        <div class="tech">Platform</div>
+        <div class="t">PWA on Vercel</div>
+        <div class="d">Installable on iOS and Android, Workbox service worker, offline app shell
+          and IndexedDB outbox.</div>
+      </div>
+      <div class="stack-item">
+        <div class="tech">Browser APIs</div>
+        <div class="t">Web Speech · WebAudio · Geolocation · Vibration</div>
+        <div class="d">Speech synthesis and recognition, a generated siren, positions for ETA,
+          and haptics where the platform allows.</div>
+      </div>
+      <div class="stack-item">
+        <div class="tech">Codegen</div>
+        <div class="t">qrcode · custom PNG encoder</div>
+        <div class="d">Server-rendered QR codes, and app icons generated by a pure-Node PNG
+          encoder we wrote — no image library.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 15 CROSS PLATFORM -->
+  <section class="slide" id="s15">
+    <div class="slide-head"><span class="slide-no">15</span><h2>Two platforms, one app</h2>
+      <span class="kicker">Tested on both, not assumed</span></div>
+    <div class="cols">
+      <div>
+        <div class="kicker" style="margin-bottom:10px">iOS quirks we handled</div>
+        <ul class="points">
+          <li><strong>No Vibration API at all.</strong> SOS confirmation falls back to a visual
+            pulse and a WebAudio beep.</li>
+          <li><strong>Audio is locked until a user gesture.</strong> The audio context is created
+            inside the tap handler, and re-resumed after every screen lock.</li>
+          <li><strong>100vh is wrong on Safari</strong> — we use <code>100dvh</code> with a
+            <code>-webkit-fill-available</code> fallback.</li>
+          <li><strong>Inputs under 16px zoom the viewport</strong>, so nothing is smaller.</li>
+        </ul>
+      </div>
+      <div>
+        <div class="kicker" style="margin-bottom:10px">Android + shared</div>
+        <ul class="points">
+          <li><strong>Vibration used where it exists</strong>, including an SOS pattern on
+            critical notifications.</li>
+          <li><strong>Safe-area insets</strong> for the notch and the gesture bar, applied once
+            as tokens rather than per screen.</li>
+          <li><strong>Native selects</strong>, so each OS renders its own picker.</li>
+          <li><strong>Maskable icon</strong> inset to 72% so Android's circle crop never clips it.</li>
+        </ul>
+      </div>
+    </div>
+    <div class="callout">
+      <p><strong>Honest limitation:</strong> a web page cannot place a phone call without the OS
+        confirming it, on either platform. We removed every extra step on our side — Call
+        Security is one tap to the dialer — but that final prompt is a browser security
+        guarantee, not something we can or should bypass.</p>
+    </div>
+  </section>
+
+  <!-- 16 QUALITY -->
+  <section class="slide" id="s16">
+    <div class="slide-head"><span class="slide-no">16</span><h2>Measured, not claimed</h2></div>
+    <div class="stat-row">
+      <div class="stat"><div class="n">97</div><div class="l">Performance</div></div>
+      <div class="stat"><div class="n">100</div><div class="l">Accessibility</div></div>
+      <div class="stat"><div class="n">100</div><div class="l">Best practices</div></div>
+      <div class="stat"><div class="n">100</div><div class="l">SEO</div></div>
+    </div>
+    <ul class="points">
+      <li><strong>0.3s first contentful paint, 0ms blocking time, zero layout shift</strong>
+        on the live deployment.</li>
+      <li><strong>Installable as a PWA</strong> on both platforms — verified against the real
+        criteria: a valid manifest, maskable icons, and a service worker with genuine
+        <code>fetch</code> and <code>install</code> handlers.</li>
+      <li><strong>Every claim on these slides was tested against production</strong>, not a local
+        build: RLS policies probed with the anonymous key, Hindi and Hinglish classification run
+        end to end, duplicate grouping proven with three simultaneous reports, escalation timed
+        past its threshold.</li>
+      <li><strong>We found and fixed real bugs this way</strong> — a serverless fire-and-forget
+        that never ran, a realtime subscription that silently dropped every event fired before
+        it connected, and a text normaliser that erased Hindi.</li>
+    </ul>
+  </section>
+
+  <!-- 17 ROADMAP -->
+  <section class="slide" id="s17">
+    <div class="slide-head"><span class="slide-no">17</span><h2>Where it goes next</h2></div>
+    <div class="cols">
+      <div>
+        <div class="kicker" style="margin-bottom:10px">Known limitations</div>
+        <ul class="points">
+          <li><strong>Escalation runs from an open dashboard.</strong> Vercel's free tier caps
+            cron at once per day; the cron is declared and a paid plan moves both sweeps
+            server-side unchanged.</li>
+          <li><strong>The staff PIN is shared.</strong> Magic-link auth is built and works;
+            the PIN exists because free-tier auth mail is rate-limited.</li>
+          <li><strong>The campus map is a schematic</strong>, not a real map — three adjacent
+            buildings read more clearly as a diagram, and it costs no network request.</li>
+        </ul>
+      </div>
+      <div>
+        <div class="kicker" style="margin-bottom:10px">Next</div>
+        <ul class="points">
+          <li><strong>Web Push</strong> so a warden is paged at 2am with the app closed.</li>
+          <li><strong>Live responder tracking</strong> — a moving ETA rather than one taken at
+            the moment of acknowledgement.</li>
+          <li><strong>Integration with the college gate and CCTV</strong>, so a critical incident
+            can surface the nearest camera.</li>
+          <li><strong>Drill mode</strong> — run a fire drill through the real system and measure
+            the response, turning the audit trail into training data.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- 18 CLOSE -->
+  <section class="slide" id="s18">
+    <div class="slide-head"><span class="slide-no">18</span><h2>Try it yourself</h2></div>
+    <div class="cols">
+      <div>
+        <p style="font-size:17px"><strong>Scan the QR code on the table, or open
+          <a href="https://asmt-aegis.vercel.app">asmt-aegis.vercel.app</a> on your phone.</strong></p>
+        <p>It installs to your home screen. File a report and watch it classify, alert and
+          escalate in real time.</p>
+        <div class="callout">
+          <p>Aegis is not a form that emails somebody. It is a system that decides how urgent
+            something is, pages the right person, and refuses to let silence be the outcome.</p>
+        </div>
+      </div>
+      <div>
+        <div class="meta-card">
+          <div class="label">Team</div>
+          <div class="value team" style="margin-bottom:12px">Bhand Coders</div>
+          <div class="label">Built by</div>
+          <div class="value roster" style="margin-bottom:12px">
+            <span>Vibhor Mehta</span>
+            <span>Devanshu Gupta</span>
+            <span>Sunny Gujjar</span>
+          </div>
+          <div class="label">Event</div>
+          <div class="value" style="font-weight:500;color:var(--ink-soft)">A.S.M.T. Hackathon 2K26</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer class="end">
+    ASMT Aegis · Bhand Coders · Anangpuria School of Management and Technology
+  </footer>
+</div>
+
+<script>
+  (function () {
+    var slides = Array.prototype.slice.call(document.querySelectorAll('.slide'));
+    var i = 0;
+
+    function go(n) {
+      i = Math.max(0, Math.min(slides.length - 1, n));
+      slides[i].scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    // Keep the index honest when the reader scrolls manually.
+    function nearest() {
+      var best = 0, bestD = Infinity;
+      slides.forEach(function (s, idx) {
+        var d = Math.abs(s.getBoundingClientRect().top - 80);
+        if (d < bestD) { bestD = d; best = idx; }
+      });
+      return best;
+    }
+
+    document.getElementById('next').addEventListener('click', function () { go(nearest() + 1); });
+    document.getElementById('prev').addEventListener('click', function () { go(nearest() - 1); });
+    document.getElementById('print').addEventListener('click', function () { window.print(); });
+
+    document.addEventListener('keydown', function (e) {
+      if (e.target && /input|textarea|select/i.test(e.target.tagName)) return;
+      if (e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === ' ') {
+        e.preventDefault(); go(nearest() + 1);
+      } else if (e.key === 'ArrowLeft' || e.key === 'PageUp') {
+        e.preventDefault(); go(nearest() - 1);
+      } else if (e.key === 'Home') { e.preventDefault(); go(0); }
+      else if (e.key === 'End') { e.preventDefault(); go(slides.length - 1); }
+    });
+  })();
+</script>
