@@ -3,7 +3,7 @@
 A phone-first emergency reporting system for a three-block college campus: scan a QR code, hold one button, and the right responder is paged in seconds with the urgency already judged.
 
 **Live:** https://asmt-aegis.vercel.app
-**Event:** A.S.M.T. Hackathon 2K26 · Team **Bhand Coders**
+**Event:** A.S.M.T. Hackathon 2K26 · Team **Bhand Coders🍁**
 **Institution:** Anangpuria School of Management and Technology
 
 ---
