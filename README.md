@@ -363,7 +363,7 @@ Not implemented: rate limiting on report submission, CAPTCHA, and per-user accou
 
 ## Originality
 
-This project was designed and built specifically for the A.S.M.T. Hackathon 2K26 by Team Bhand Coders. It is not a clone or fork of an existing GitHub project, and it was not assembled from a template beyond the standard `create-next-app` scaffold.
+This project was designed and built specifically for the A.S.M.T. Hackathon 2K26 by Team Bhand Coders🍁. It is not a clone or fork of an existing GitHub project, and it was not assembled from a template beyond the standard `create-next-app` scaffold.
 
 The application logic is original to this project: the two-stage classifier and its `MAX(rule, ai)` combination rule, the Hindi and Hinglish keyword sets, the tiered escalation model backed by the `escalations` table, the duplicate-grouping heuristic, the Safe Walk check-in design, the offline IndexedDB outbox, the resync-on-reconnect live sync layer, and the pure-Node PNG encoder used to generate the app icons were all written for this submission.
 
