@@ -371,5 +371,5 @@ Third-party open-source libraries are used under their own licences and are list
 
 ---
 
-**Team Bhand Coders** — Vibhor Mehta · Devanshu Gupta · Sunny Gujjar
+**Team Bhand Coders🍁** — Vibhor Mehta · Devanshu Gupta · Sunny Gujjar
 Anangpuria School of Management and Technology
