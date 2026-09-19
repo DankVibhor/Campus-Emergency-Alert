@@ -1,62 +1,34 @@
 import { NextResponse } from "next/server";
 import { STAFF_COOKIE, checkPin, issueStaffToken } from "@/lib/staff-auth";
+import { LIMITS, checkRateLimit, clientKey, rateLimitResponse } from "@/lib/rate-limit";
+import { badRequest, readJson, unauthorized } from "@/lib/api";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 /**
- * Per-instance throttle. Not a distributed rate limiter, but enough to stop
- * someone standing at the demo table guessing a 9-character PIN.
+ * Staff PIN sign-in.
+ *
+ * The previous throttle was a module-level Map, which is per-instance: on
+ * Vercel a fresh serverless instance has an empty Map, so an attacker
+ * distributing guesses across invocations (which happens automatically under
+ * concurrent load) was barely throttled at all against the one credential
+ * this app protects with a PIN rather than a password. checkRateLimit counts
+ * in Postgres, which every instance shares.
  */
-const attempts = new Map<string, { count: number; first: number }>();
-const WINDOW_MS = 60_000;
-const MAX_ATTEMPTS = 8;
-
-function clientKey(req: Request) {
-  return (
-    req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
-    req.headers.get("x-real-ip") ||
-    "unknown"
-  );
-}
-
-function throttled(key: string): boolean {
-  const now = Date.now();
-  const entry = attempts.get(key);
-  if (!entry || now - entry.first > WINDOW_MS) {
-    attempts.set(key, { count: 1, first: now });
-    return false;
-  }
-  entry.count += 1;
-  return entry.count > MAX_ATTEMPTS;
-}
-
 export async function POST(req: Request) {
   const key = clientKey(req);
-  if (throttled(key)) {
-    return NextResponse.json(
-      { error: "Too many attempts. Wait a minute and try again." },
-      { status: 429 },
-    );
-  }
+  const limit = await checkRateLimit(LIMITS.login, key);
+  if (!limit.allowed) return rateLimitResponse(limit);
 
-  let pin = "";
-  try {
-    const body = (await req.json()) as { pin?: string };
-    pin = (body.pin ?? "").trim();
-  } catch {
-    return NextResponse.json({ error: "invalid JSON body" }, { status: 400 });
-  }
+  const body = await readJson(req);
+  if (!body) return badRequest("Invalid request body.");
 
-  if (!pin) {
-    return NextResponse.json({ error: "PIN required" }, { status: 400 });
-  }
+  const pin = typeof body.pin === "string" ? body.pin.trim() : "";
+  if (!pin) return badRequest("PIN required.");
+  if (pin.length > 64) return badRequest("PIN required.");
 
-  if (!checkPin(pin)) {
-    return NextResponse.json({ error: "Incorrect PIN." }, { status: 401 });
-  }
-
-  attempts.delete(key);
+  if (!checkPin(pin)) return unauthorized("Incorrect PIN.");
 
   const res = NextResponse.json({ ok: true });
   res.cookies.set(STAFF_COOKIE, issueStaffToken(), {

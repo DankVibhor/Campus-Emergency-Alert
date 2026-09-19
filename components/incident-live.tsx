@@ -11,6 +11,7 @@ import { speakStatus } from "@/lib/phrases";
 import { supabase } from "@/lib/supabase-browser";
 import { useLiveSync } from "@/lib/use-live-sync";
 import {
+  INCIDENT_PUBLIC_COLUMNS,
   PRIORITY_STYLES,
   STATUS_LABELS,
   type Campus,
@@ -48,7 +49,7 @@ export default function IncidentLive({ incidentId, justSent }: Props) {
     async function load() {
       const { data, error } = await supabase
         .from("incidents")
-        .select("*")
+        .select(INCIDENT_PUBLIC_COLUMNS)
         .eq("id", incidentId)
         .maybeSingle();
 
@@ -60,7 +61,7 @@ export default function IncidentLive({ incidentId, justSent }: Props) {
         return;
       }
 
-      const inc = data as Incident;
+      const inc = data as unknown as Incident;
       setIncident(inc);
 
       const [eventRes, campusRes, locationRes] = await Promise.all([
@@ -99,14 +100,14 @@ export default function IncidentLive({ incidentId, justSent }: Props) {
   // reporter never has to pull-to-refresh to see that help is on the way.
   const resync = useCallback(async () => {
     const [incidentRes, eventRes] = await Promise.all([
-      supabase.from("incidents").select("*").eq("id", incidentId).maybeSingle(),
+      supabase.from("incidents").select(INCIDENT_PUBLIC_COLUMNS).eq("id", incidentId).maybeSingle(),
       supabase
         .from("incident_events")
         .select("*")
         .eq("incident_id", incidentId)
         .order("created_at", { ascending: true }),
     ]);
-    if (incidentRes.data) setIncident(incidentRes.data as Incident);
+    if (incidentRes.data) setIncident(incidentRes.data as unknown as Incident);
     if (eventRes.data) setEvents(eventRes.data as IncidentEvent[]);
   }, [incidentId]);
 

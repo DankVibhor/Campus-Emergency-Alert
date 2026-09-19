@@ -7,6 +7,7 @@ import { supabase } from "@/lib/supabase-browser";
 import { useLiveSync } from "@/lib/use-live-sync";
 import { listReports, type MyReport } from "@/lib/my-reports";
 import {
+  INCIDENT_PUBLIC_COLUMNS,
   PRIORITY_STYLES,
   STATUS_LABELS,
   type Incident,
@@ -24,9 +25,9 @@ export default function MyReportsList() {
       setLoading(false);
       return;
     }
-    const { data } = await supabase.from("incidents").select("*").in("id", ids);
+    const { data } = await supabase.from("incidents").select(INCIDENT_PUBLIC_COLUMNS).in("id", ids);
     const map: Record<string, Incident> = {};
-    for (const row of (data ?? []) as Incident[]) map[row.id] = row;
+    for (const row of (data ?? []) as unknown as Incident[]) map[row.id] = row;
     setIncidents(map);
     setLoading(false);
   }, []);

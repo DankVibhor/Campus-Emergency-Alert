@@ -151,3 +151,42 @@ export const STATUS_LABELS: Record<IncidentStatus, string> = {
   resolved: "Resolved",
   cancelled: "Cancelled",
 };
+
+/**
+ * Columns on `incidents` the anonymous key may read (see migration 0003).
+ *
+ * Reporter identity and GPS are deliberately absent: they are granted only to
+ * the service-role key and reach the dashboard through /api/incident/contacts
+ * after a staff-session check. Selecting "*" as anon now fails with a Postgres
+ * permission error, so every client-side query must use this list.
+ */
+export const INCIDENT_PUBLIC_COLUMNS = [
+  "id",
+  "campus_id",
+  "location_id",
+  "is_anonymous",
+  "emergency_type",
+  "description",
+  "ai_priority",
+  "rule_priority",
+  "final_priority",
+  "ai_reasoning",
+  "status",
+  "created_at",
+  "classified_at",
+  "acknowledged_at",
+  "resolved_at",
+  "acknowledged_by",
+  "photo_url",
+  "duplicate_of",
+  "responder_eta_seconds",
+  "on_my_way_at",
+].join(",");
+
+/** Reporter identity, fetched separately by staff only. */
+export interface IncidentContact {
+  id: string;
+  reporter_name: string | null;
+  reporter_phone: string | null;
+  responder_name: string | null;
+}

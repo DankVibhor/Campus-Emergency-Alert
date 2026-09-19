@@ -17,11 +17,13 @@ import { supabase } from "@/lib/supabase-browser";
 import { useLiveSync } from "@/lib/use-live-sync";
 import * as alarm from "@/lib/alarm";
 import {
+  INCIDENT_PUBLIC_COLUMNS,
   PRIORITY_STYLES,
   STATUS_LABELS,
   type Campus,
   type CampusLocation,
   type Incident,
+  type IncidentContact,
   type Priority,
 } from "@/lib/types";
 import CampusMap from "@/components/campus-map";
@@ -100,14 +102,14 @@ export default function DashboardLive() {
     const [incidentRes, campusRes, locationRes] = await Promise.all([
       supabase
         .from("incidents")
-        .select("*")
+        .select(INCIDENT_PUBLIC_COLUMNS)
         .order("created_at", { ascending: false })
         .limit(100),
       supabase.from("campuses").select("*").order("name"),
       supabase.from("locations").select("*"),
     ]);
 
-    if (incidentRes.data) setIncidents(incidentRes.data as Incident[]);
+    if (incidentRes.data) setIncidents(incidentRes.data as unknown as Incident[]);
     if (campusRes.data) setCampuses(campusRes.data as Campus[]);
     if (locationRes.data) setLocations(locationRes.data as CampusLocation[]);
     setLoading(false);
@@ -172,6 +174,45 @@ export default function DashboardLive() {
       window.clearInterval(id);
     };
   }, []);
+
+  // Reporter name/phone are no longer readable by the anon Postgres role
+  // (migration 0003 - they leaked to anyone holding the public anon key), so
+  // the staff-gated route fetches them separately for whatever is on screen.
+  const [contacts, setContacts] = useState<Record<string, IncidentContact>>({});
+  useEffect(() => {
+    const ids = incidents
+      .filter((i) => !i.is_anonymous)
+      .map((i) => i.id)
+      .filter((id) => !(id in contacts))
+      .slice(0, 100);
+    if (ids.length === 0) return;
+
+    let cancelled = false;
+    void fetch("/api/incident/contacts", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ids }),
+    })
+      .then((res) => (res.ok ? res.json() : { contacts: [] }))
+      .then((body: { contacts?: IncidentContact[] }) => {
+        if (cancelled || !body.contacts) return;
+        setContacts((prev) => {
+          const next = { ...prev };
+          for (const c of body.contacts as IncidentContact[]) next[c.id] = c;
+          return next;
+        });
+      })
+      .catch(() => {
+        /* the card just falls back to "Unnamed" */
+      });
+
+    return () => {
+      cancelled = true;
+    };
+    // Re-checks whenever the incident list changes; `contacts` itself is read
+    // but intentionally excluded so a completed fetch does not retrigger this.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [incidents]);
 
   const campusName = useCallback(
     (id: string | null) => campuses.find((c) => c.id === id)?.name ?? "Unknown block",
@@ -497,6 +538,7 @@ export default function DashboardLive() {
               campusName={campusName(incident.campus_id)}
               locationLabel={locationLabel(incident.location_id)}
               duplicates={duplicateCounts.get(incident.id) ?? 0}
+              contact={contacts[incident.id]}
               busy={busyId === incident.id}
               onAction={act}
             />
@@ -512,6 +554,7 @@ function IncidentCard({
   campusName,
   locationLabel,
   duplicates,
+  contact,
   busy,
   onAction,
 }: {
@@ -519,6 +562,7 @@ function IncidentCard({
   campusName: string;
   locationLabel: string;
   duplicates: number;
+  contact: IncidentContact | undefined;
   busy: boolean;
   onAction: (id: string, action: "acknowledge" | "resolve") => void;
 }) {
@@ -592,8 +636,8 @@ function IncidentCard({
       <p className="mt-1.5 text-xs text-slate-400">
         {incident.is_anonymous
           ? "Anonymous"
-          : `${incident.reporter_name || "Unnamed"}${
-              incident.reporter_phone ? ` · ${incident.reporter_phone}` : ""
+          : `${contact?.reporter_name || "Unnamed"}${
+              contact?.reporter_phone ? ` · ${contact.reporter_phone}` : ""
             }`}
         {" · "}
         {STATUS_LABELS[incident.status]}

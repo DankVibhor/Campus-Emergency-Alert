@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { AlertTriangle, CheckCircle2, Clock, Timer } from "lucide-react";
 import { supabase } from "@/lib/supabase-browser";
+import { INCIDENT_PUBLIC_COLUMNS } from "@/lib/types";
 import type { Campus, Incident, Priority } from "@/lib/types";
 
 /**
@@ -32,11 +33,11 @@ export default function AnalyticsView() {
     let cancelled = false;
     async function load() {
       const [incidentRes, campusRes] = await Promise.all([
-        supabase.from("incidents").select("*").order("created_at", { ascending: false }).limit(500),
+        supabase.from("incidents").select(INCIDENT_PUBLIC_COLUMNS).order("created_at", { ascending: false }).limit(500),
         supabase.from("campuses").select("*").order("name"),
       ]);
       if (cancelled) return;
-      setIncidents((incidentRes.data ?? []) as Incident[]);
+      setIncidents((incidentRes.data ?? []) as unknown as Incident[]);
       setCampuses((campusRes.data ?? []) as Campus[]);
       setLoading(false);
     }

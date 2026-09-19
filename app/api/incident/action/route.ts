@@ -7,46 +7,43 @@ import {
   formatEta,
   haversineMetres,
 } from "@/lib/geo";
+import {
+  badRequest,
+  conflict,
+  isUuid,
+  notFound,
+  optionalCoords,
+  optionalText,
+  oneOf,
+  readJson,
+  serverError,
+  stripControlChars,
+  unauthorized,
+} from "@/lib/api";
 import type { Incident } from "@/lib/types";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-type Action = "acknowledge" | "resolve";
+const ACTIONS = ["acknowledge", "resolve"] as const;
 
 export async function POST(req: Request) {
-  if (!isStaff()) {
-    return NextResponse.json({ error: "Not signed in as staff." }, { status: 401 });
-  }
+  if (!isStaff()) return unauthorized("Not signed in as staff.");
 
-  let incidentId = "";
-  let action: Action = "acknowledge";
-  let actor = "responder";
-  let responderLat: number | null = null;
-  let responderLng: number | null = null;
+  const body = await readJson(req);
+  if (!body) return badRequest("Invalid request body.");
 
-  try {
-    const body = (await req.json()) as {
-      incidentId?: string;
-      action?: Action;
-      actor?: string;
-      lat?: number;
-      lng?: number;
-    };
-    if (!body.incidentId) {
-      return NextResponse.json({ error: "incidentId required" }, { status: 400 });
-    }
-    if (body.action !== "acknowledge" && body.action !== "resolve") {
-      return NextResponse.json({ error: "invalid action" }, { status: 400 });
-    }
-    incidentId = body.incidentId;
-    action = body.action;
-    actor = (body.actor || "responder").slice(0, 80);
-    responderLat = Number.isFinite(body.lat) ? (body.lat as number) : null;
-    responderLng = Number.isFinite(body.lng) ? (body.lng as number) : null;
-  } catch {
-    return NextResponse.json({ error: "invalid JSON body" }, { status: 400 });
-  }
+  if (!isUuid(body.incidentId)) return badRequest("A valid incident id is required.");
+  const incidentId: string = body.incidentId;
+
+  const action = oneOf(body.action, ACTIONS);
+  if (!action) return badRequest("Invalid action.");
+
+  const actorRaw = optionalText(body.actor, 80) ?? "responder";
+  const actor = stripControlChars(actorRaw);
+  const coords = optionalCoords(body.lat, body.lng);
+  const responderLat = coords?.lat ?? null;
+  const responderLng = coords?.lng ?? null;
 
   const db = getAdminClient();
 
@@ -56,16 +53,11 @@ export async function POST(req: Request) {
     .eq("id", incidentId)
     .maybeSingle();
 
-  if (error || !data) {
-    return NextResponse.json({ error: "incident not found" }, { status: 404 });
-  }
+  if (error || !data) return notFound("Incident not found.");
   const incident = data as Incident;
 
   if (incident.status === "cancelled") {
-    return NextResponse.json(
-      { error: "This report was withdrawn by the reporter." },
-      { status: 409 },
-    );
+    return conflict("This report was withdrawn by the reporter.");
   }
 
   const now = new Date().toISOString();
@@ -112,7 +104,7 @@ export async function POST(req: Request) {
       .eq("id", incidentId);
 
     if (updateError) {
-      return NextResponse.json({ error: updateError.message }, { status: 500 });
+      return serverError("incident.acknowledge", updateError, "Could not acknowledge the report.");
     }
 
     // Stops the escalation timer for every tier already paged.
@@ -155,7 +147,7 @@ export async function POST(req: Request) {
     .eq("id", incidentId);
 
   if (updateError) {
-    return NextResponse.json({ error: updateError.message }, { status: 500 });
+    return serverError("incident.resolve", updateError, "Could not resolve the report.");
   }
 
   await db

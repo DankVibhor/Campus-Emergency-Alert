@@ -8,6 +8,13 @@ import {
   type NotifyTarget,
 } from "@/lib/telegram";
 import { maxPriority, type Incident, type Priority } from "@/lib/types";
+import {
+  LIMITS,
+  checkRateLimit,
+  clientKey,
+  rateLimitResponse,
+} from "@/lib/rate-limit";
+import { safeOrigin, badRequest, isUuid, notFound, readJson, serverError } from "@/lib/api";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -15,25 +22,28 @@ export const dynamic = "force-dynamic";
 /** Same type, same block, inside this window counts as the same emergency. */
 const DUPLICATE_WINDOW_MS = 10 * 60 * 1000;
 
-function originFrom(req: Request) {
-  const env = process.env.NEXT_PUBLIC_SITE_URL;
-  if (env) return env.replace(/\/$/, "");
-  const proto = req.headers.get("x-forwarded-proto") ?? "https";
-  const host = req.headers.get("x-forwarded-host") ?? req.headers.get("host");
-  return host ? `${proto}://${host}` : "";
+
+/** True when the call came from our own /api/report, not the public internet. */
+function isInternalCall(req: Request): boolean {
+  const secret = process.env.INTERNAL_API_SECRET;
+  if (!secret) return false;
+  return req.headers.get("x-aegis-internal") === secret;
 }
 
 export async function POST(req: Request) {
-  let incidentId: string;
-  try {
-    const body = (await req.json()) as { incidentId?: string };
-    if (!body.incidentId) {
-      return NextResponse.json({ error: "incidentId required" }, { status: 400 });
-    }
-    incidentId = body.incidentId;
-  } catch {
-    return NextResponse.json({ error: "invalid JSON body" }, { status: 400 });
+  // Classification is idempotent, but it fans out to Telegram, so an
+  // unthrottled endpoint is a way to page responders repeatedly. Calls
+  // originating from our own report route skip this, since they were already
+  // rate limited at intake.
+  if (!isInternalCall(req)) {
+    const limit = await checkRateLimit(LIMITS.classify, clientKey(req));
+    if (!limit.allowed) return rateLimitResponse(limit);
   }
+
+  const body = await readJson(req);
+  if (!body) return badRequest("Invalid request body.");
+  if (!isUuid(body.incidentId)) return badRequest("A valid incident id is required.");
+  const incidentId: string = body.incidentId;
 
   const db = getAdminClient();
 
@@ -44,7 +54,7 @@ export async function POST(req: Request) {
     .maybeSingle();
 
   if (loadError || !incidentRow) {
-    return NextResponse.json({ error: "incident not found" }, { status: 404 });
+    return notFound("Incident not found.");
   }
   const incident = incidentRow as Incident;
 
@@ -109,7 +119,7 @@ export async function POST(req: Request) {
     .eq("id", incidentId);
 
   if (updateError) {
-    return NextResponse.json({ error: updateError.message }, { status: 500 });
+    return serverError("classify.update", updateError, "Could not classify the report.");
   }
 
   await db.from("incident_events").insert({
@@ -192,7 +202,7 @@ export async function POST(req: Request) {
       return { chatId: row.telegram_chat_id, label: `${row.name} (${row.role})` };
     });
 
-  const origin = originFrom(req);
+  const origin = safeOrigin(req);
   const message = buildAlertMessage({
     priority: finalPriority,
     emergencyType: incident.emergency_type,

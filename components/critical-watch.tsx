@@ -10,6 +10,7 @@ import { primeSpeech, speak } from "@/lib/speech";
 import { readSettings } from "@/lib/a11y-settings";
 import { speakStaffAlert } from "@/lib/phrases";
 import {
+  INCIDENT_PUBLIC_COLUMNS,
   PRIORITY_STYLES,
   type Campus,
   type CampusLocation,
@@ -152,14 +153,14 @@ export default function CriticalWatch() {
     const since = new Date(Date.now() - RESYNC_WINDOW_MS).toISOString();
     const { data } = await supabase
       .from("incidents")
-      .select("*")
+      .select(INCIDENT_PUBLIC_COLUMNS)
       .in("status", ["reported", "classified"])
       .is("acknowledged_at", null)
       .gte("created_at", since)
       .order("created_at", { ascending: false })
       .limit(5);
 
-    for (const row of (data ?? []) as Incident[]) {
+    for (const row of (data ?? []) as unknown as Incident[]) {
       await raise(row);
     }
   }, [raise]);

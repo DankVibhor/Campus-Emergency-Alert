@@ -7,17 +7,12 @@ import {
   type NotifyTarget,
 } from "@/lib/telegram";
 import type { SafeWalk } from "@/lib/types";
+import { LIMITS, checkRateLimit, clientKey, rateLimitResponse } from "@/lib/rate-limit";
+import { safeOrigin, serverError, unauthorized } from "@/lib/api";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-function originFrom(req: Request) {
-  const env = process.env.NEXT_PUBLIC_SITE_URL;
-  if (env) return env.replace(/\/$/, "");
-  const proto = req.headers.get("x-forwarded-proto") ?? "https";
-  const host = req.headers.get("x-forwarded-host") ?? req.headers.get("host");
-  return host ? `${proto}://${host}` : "";
-}
 
 /**
  * Turns a missed check-in into a real incident.
@@ -28,7 +23,7 @@ function originFrom(req: Request) {
  */
 async function sweep(req: Request) {
   const db = getAdminClient();
-  const origin = originFrom(req);
+  const origin = safeOrigin(req);
   const now = new Date().toISOString();
 
   const { data, error } = await db
@@ -39,7 +34,7 @@ async function sweep(req: Request) {
     .limit(25);
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return serverError("safe-walk.sweep", error, "Could not run the safe-walk sweep.");
   }
 
   const walks = (data ?? []) as SafeWalk[];
@@ -142,17 +137,39 @@ async function sweep(req: Request) {
   return NextResponse.json({ ok: true, checked: walks.length, raised });
 }
 
+/**
+ * Cron entry point.
+ *
+ * CRON_SECRET was previously optional: `if (secret)` meant that leaving it
+ * unset - which it was, in this deployment, until this audit - disabled the
+ * check entirely and left this route open to an unauthenticated GET from
+ * anyone on the internet. It now fails closed: no secret configured means no
+ * access, not open access.
+ */
 export async function GET(req: Request) {
   const secret = process.env.CRON_SECRET;
-  if (secret) {
-    const auth = req.headers.get("authorization");
-    if (auth !== `Bearer ${secret}`) {
-      return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-    }
+  if (!secret) {
+    console.error("[aegis:cron] CRON_SECRET is not configured; refusing the request.");
+    return unauthorized("Not configured.");
   }
+  const auth = req.headers.get("authorization");
+  if (auth !== `Bearer ${secret}`) {
+    return unauthorized();
+  }
+  // A leaked secret should still not allow hammering this endpoint.
+  const limit = await checkRateLimit(LIMITS.sweep, clientKey(req));
+  if (!limit.allowed) return rateLimitResponse(limit);
   return sweep(req);
 }
 
+/**
+ * Browser entry point. Called both by the responder dashboard and, crucially,
+ * by the walker's own device the moment its timer expires - so this cannot
+ * require a staff session without breaking the feature for the person the
+ * feature exists to protect. Rate limited instead.
+ */
 export async function POST(req: Request) {
+  const limit = await checkRateLimit(LIMITS.sweep, clientKey(req));
+  if (!limit.allowed) return rateLimitResponse(limit);
   return sweep(req);
 }

@@ -51,9 +51,10 @@ export default function SafeWalkPanel() {
 
     sweptRef.current = true;
     void fetch("/api/safe-walk/sweep", { method: "POST" })
-      .then(() => supabase.from("safe_walks").select("*").eq("id", walk.id).maybeSingle())
-      .then((res) => {
-        if (res?.data) setWalk(res.data as SafeWalk);
+      .then(() => fetch(`/api/safe-walk?id=${walk.id}`))
+      .then((res) => (res.ok ? res.json() : null))
+      .then((body: { walk?: SafeWalk } | null) => {
+        if (body?.walk) setWalk(body.walk);
       })
       .catch(() => {
         /* the dashboard sweep is the fallback */
@@ -83,12 +84,15 @@ export default function SafeWalkPanel() {
         /* ignore */
       }
       if (activeId) {
-        const { data: row } = await supabase
-          .from("safe_walks")
-          .select("*")
-          .eq("id", activeId)
-          .maybeSingle();
-        if (row) setWalk(row as SafeWalk);
+        try {
+          const res = await fetch(`/api/safe-walk?id=${activeId}`);
+          if (res.ok) {
+            const body = (await res.json()) as { walk?: SafeWalk };
+            if (body.walk) setWalk(body.walk);
+          }
+        } catch {
+          /* stay on the setup screen if the fetch fails */
+        }
       }
       setLoading(false);
     }
@@ -118,10 +122,13 @@ export default function SafeWalkPanel() {
     const id = window.setInterval(() => {
       const c = coordsRef.current;
       if (!c) return;
-      void supabase
-        .from("safe_walks")
-        .update({ last_lat: c.lat, last_lng: c.lng })
-        .eq("id", walk.id);
+      void fetch("/api/safe-walk", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: walk.id, last_lat: c.lat, last_lng: c.lng }),
+      }).catch(() => {
+        /* a missed position ping is not fatal; the next one retries */
+      });
     }, 20_000);
     return () => window.clearInterval(id);
   }, [walk]);
@@ -130,26 +137,27 @@ export default function SafeWalkPanel() {
     setBusy(true);
     setError(null);
     try {
-      const due = new Date(Date.now() + minutes * 60_000).toISOString();
-      const { data, error: insertError } = await supabase
-        .from("safe_walks")
-        .insert({
+      const res = await fetch("/api/safe-walk", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
           campus_id: campusId || null,
           person_name: name.trim() || null,
           person_phone: phone.trim() || null,
           from_label: fromLabel.trim() || null,
           to_label: toLabel.trim() || null,
           expected_minutes: minutes,
-          due_at: due,
           last_lat: coordsRef.current?.lat ?? null,
           last_lng: coordsRef.current?.lng ?? null,
-        })
-        .select("*")
-        .single();
+        }),
+      });
+      const body = (await res.json().catch(() => ({}))) as {
+        walk?: SafeWalk;
+        error?: string;
+      };
+      if (!res.ok || !body.walk) throw new Error(body.error ?? "Could not start.");
 
-      if (insertError || !data) throw new Error(insertError?.message ?? "Could not start.");
-
-      const row = data as SafeWalk;
+      const row = body.walk;
       setWalk(row);
       try {
         window.localStorage.setItem(ACTIVE_KEY, row.id);
@@ -171,16 +179,18 @@ export default function SafeWalkPanel() {
       setBusy(true);
       setError(null);
       try {
-        const { error: updateError } = await supabase
-          .from("safe_walks")
-          .update({
-            status,
-            checked_in_at: new Date().toISOString(),
-          })
-          .eq("id", walk.id);
-        if (updateError) throw new Error(updateError.message);
+        const res = await fetch("/api/safe-walk", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id: walk.id, status }),
+        });
+        const body = (await res.json().catch(() => ({}))) as {
+          walk?: SafeWalk;
+          error?: string;
+        };
+        if (!res.ok || !body.walk) throw new Error(body.error ?? "Could not check in.");
 
-        setWalk({ ...walk, status, checked_in_at: new Date().toISOString() });
+        setWalk(body.walk);
         try {
           window.localStorage.removeItem(ACTIVE_KEY);
         } catch {

@@ -42,6 +42,8 @@ public/workbox-*.js
 public/workbox-*.js.map
 public/fallback-*.js
 
-# secrets - never commit any env file
+# secrets - never commit any env file except the checked-in placeholder
+# template, which must be tracked so the required variables are documented.
 .env
 .env.*
+!.env.example

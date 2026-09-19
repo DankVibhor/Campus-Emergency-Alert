@@ -4,6 +4,7 @@ import BottomNav from "@/components/bottom-nav";
 import CallSecurity from "@/components/call-security";
 import StaffAlerts from "@/components/staff-alerts";
 import A11yBoot from "@/components/a11y-boot";
+import CreatorFooter from "@/components/creator-footer";
 
 export const metadata: Metadata = {
   title: "ASMT Aegis — Campus Emergency Response",
@@ -52,7 +53,10 @@ export default function RootLayout({
         <StaffAlerts />
 
         <div className="mx-auto flex min-h-[100dvh] w-full max-w-md flex-col bg-white">
-          <main className="flex-1 pb-nav">{children}</main>
+          <main className="flex-1 pb-nav">
+            {children}
+            <CreatorFooter />
+          </main>
         </div>
 
         {/* One fixed stack: the call bar sits directly above the nav, so
